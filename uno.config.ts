@@ -1,11 +1,11 @@
-import { defineConfig, presetAttributify } from 'unocss';
-import { presetWind3 } from 'unocss';
+import { defineConfig, presetAttributify, presetWind3 } from 'unocss';
 
 export default defineConfig({
   presets: [
     presetWind3(), // 基础原子类
-    presetAttributify(), // 属性化模式（可选）
+    presetAttributify(), // 属性模式
   ],
+  shortcuts: {}, // 自定义
   theme: {
     colors: {
       primary: '#4285f4', // 与CSS变量对应
