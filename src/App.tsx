@@ -1,12 +1,24 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import SideNavigator from './components/global/SideNavigator/index';
 import TopController from './components/global/TopController/index';
+import AdminPage from './pages/admin/index';
 import GalleryPage from './pages/gallery/index';
 import HomePage from './pages/home/index';
 import NotFoundPage from './pages/not-found/index';
 import NotePage from './pages/note/index';
 
 function App() {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+
+  if (isAdmin) {
+    return (
+      <Routes>
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
+    );
+  }
+
   return (
     <>
       <TopController />
