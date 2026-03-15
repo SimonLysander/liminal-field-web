@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import Footer from './components/global/Footer/index';
 import SideNavigator from './components/global/SideNavigator/index';
 import TopController from './components/global/TopController/index';
 import AdminPage from './pages/admin/index';
+import AgentPage from './pages/agent/index';
 import GalleryPage from './pages/gallery/index';
 import HomePage from './pages/home/index';
 import NotFoundPage from './pages/not-found/index';
@@ -20,25 +22,29 @@ function App() {
   }
 
   return (
-    <>
+    <div className="flex h-screen flex-col bg-background">
       <TopController />
-      {/* grid grid-cols-[fit, 1fr, fit] gap-4 */}
-      <div className="flex items-start gap-4 w-full">
-        <nav className="fixed left-0 top-1/2 -translate-y-1/2 flex-shrink-0 bg-gray-50 shadow-md border-r border-gray-200">
+
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="w-16 shrink-0 border-r border-border bg-background">
           <SideNavigator />
-        </nav>
-        <article className="flex-grow ml-32 overflow-y-auto h-screen">
-          <Routes>
+        </aside>
+
+        <div className="flex flex-col flex-1 min-w-0">
+          <main className="flex-1 overflow-y-auto">
+            <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/note" element={<NotePage />} />
             <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/agent" element={<AgentPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </article>
+          </main>
+          <Footer />
+        </div>
       </div>
-      <footer />
-    </>
+    </div>
   );
 }
 

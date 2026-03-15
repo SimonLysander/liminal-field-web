@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  type CreateNavigationNodeDto,
-  type NavigationNode,
-  type NavigationNodeType,
-  type UpdateNavigationNodeDto,
-  navigationApi,
-} from '../../services/navigation';
+  type CreateStructureNodeDto,
+  structureApi,
+  type StructureNode,
+  type StructureNodeType,
+  type UpdateStructureNodeDto,
+} from '../../services/structure';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface TreeNode extends NavigationNode {
+interface TreeNode extends StructureNode {
   children?: TreeNode[];
   isExpanded?: boolean;
   isLoading?: boolean;
@@ -73,13 +73,13 @@ function countNodes(nodes: TreeNode[]): number {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const TypeBadge = ({ type }: { type: NavigationNodeType }) => (
+const TypeBadge = ({ type }: { type: StructureNodeType }) => (
   <span
-    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-      type === 'subject' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+    className={`inline-flex items-center rounded border px-2 py-0.5 text-xs ${
+      type === 'FOLDER' ? 'border-border bg-muted text-foreground' : 'border-border bg-muted text-foreground'
     }`}
   >
-    {type === 'subject' ? '📁 分类' : '📄 内容'}
+    {type === 'FOLDER' ? '📁 分类' : '📄 内容'}
   </span>
 );
 
@@ -97,10 +97,10 @@ const IconBtn = ({
   <button
     title={title}
     onClick={onClick}
-    className={`p-1 rounded transition-colors ${
+    className={`rounded p-1 transition-colors ${
       danger
-        ? 'text-gray-400 hover:text-red-500 hover:bg-red-50'
-        : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'
+        ? 'text-gray-500 hover:bg-muted hover:text-foreground'
+        : 'text-gray-500 hover:bg-muted hover:text-foreground'
     }`}
   >
     {children}
@@ -128,14 +128,14 @@ const TreeNodeItem = ({
   onEdit: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
 }) => {
-  const isSubject = node.nodeType === 'subject';
+  const isSubject = node.type === 'FOLDER';
   const isSelected = selected === node.id;
 
   return (
     <div>
       <div
-        className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
-          isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+        className={`group flex cursor-pointer items-center gap-1 rounded border px-2 py-1.5 transition-colors ${
+          isSelected ? 'border-gray-300 bg-gray-100' : 'border-transparent hover:bg-gray-50'
         }`}
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
         onClick={() => onSelect(node)}
@@ -283,10 +283,10 @@ const NodeFormModal = ({
 }: {
   modal: ModalState;
   onClose: () => void;
-  onSubmit: (data: CreateNavigationNodeDto | UpdateNavigationNodeDto) => Promise<void>;
+  onSubmit: (data: CreateStructureNodeDto | UpdateStructureNodeDto) => Promise<void>;
 }) => {
   const [name, setName] = useState(modal.node?.name ?? '');
-  const [nodeType, setNodeType] = useState<NavigationNodeType>(modal.node?.nodeType ?? 'subject');
+  const [type, setType] = useState<StructureNodeType>(modal.node?.type ?? 'FOLDER');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -307,11 +307,11 @@ const NodeFormModal = ({
       if (modal.mode === 'create') {
         await onSubmit({
           name: name.trim(),
-          nodeType,
+          type,
           parentId: modal.parentId,
-        } as CreateNavigationNodeDto);
+        } as CreateStructureNodeDto);
       } else {
-        await onSubmit({ name: name.trim() } as UpdateNavigationNodeDto);
+        await onSubmit({ name: name.trim() } as UpdateStructureNodeDto);
       }
       onClose();
     } catch (err) {
@@ -325,12 +325,12 @@ const NodeFormModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="mx-4 w-full max-w-md overflow-hidden rounded-lg border border-gray-200 bg-white">
         {/* header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
             {isCreate ? '新建导航节点' : '编辑导航节点'}
           </h2>
@@ -351,7 +351,7 @@ const NodeFormModal = ({
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {/* parent hint */}
           {isCreate && modal.parentId && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg text-sm text-blue-700">
+            <div className="flex items-center gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
               <svg
                 viewBox="0 0 24 24"
                 className="w-4 h-4 flex-shrink-0"
@@ -379,7 +379,7 @@ const NodeFormModal = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="请输入节点名称"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm transition focus:outline-none"
             />
           </div>
 
@@ -390,21 +390,19 @@ const NodeFormModal = ({
                 节点类型 <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
-                {(['subject', 'content'] as NavigationNodeType[]).map((t) => (
+                {(['FOLDER', 'DOC'] as StructureNodeType[]).map((t) => (
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setNodeType(t)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                      nodeType === t
-                        ? t === 'subject'
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    onClick={() => setType(t)}
+                    className={`flex items-center gap-2 rounded border px-3 py-2.5 text-sm transition-colors ${
+                      type === t
+                        ? 'border-gray-400 bg-gray-100 text-gray-900'
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
-                    <span>{t === 'subject' ? '📁' : '📄'}</span>
-                    {t === 'subject' ? '分类节点' : '内容节点'}
+                    <span>{t === 'FOLDER' ? '📁' : '📄'}</span>
+                    {t === 'FOLDER' ? '分类节点' : '内容节点'}
                   </button>
                 ))}
               </div>
@@ -413,7 +411,7 @@ const NodeFormModal = ({
 
           {/* error */}
           {error && (
-            <p className="text-sm text-red-500 flex items-center gap-1">
+            <p className="flex items-center gap-1 text-sm text-gray-700">
               <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
               </svg>
@@ -426,14 +424,14 @@ const NodeFormModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
             >
               取消
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="rounded border border-gray-800 bg-gray-900 px-4 py-2 text-sm text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-800"
             >
               {submitting ? '提交中…' : isCreate ? '创建' : '保存'}
             </button>
@@ -470,14 +468,14 @@ const ConfirmDialog = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+      <div className="mx-4 w-full max-w-sm overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="px-6 py-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50">
               <svg
                 viewBox="0 0 24 24"
-                className="w-5 h-5 text-red-500"
+                className="h-5 w-5 text-gray-600"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -495,23 +493,23 @@ const ConfirmDialog = ({
               </p>
             </div>
           </div>
-          {node.nodeType === 'subject' && (
-            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mb-3">
+          {node.type === 'FOLDER' && (
+            <p className="mb-3 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
               ⚠️ 删除分类节点可能影响其子节点，请谨慎操作
             </p>
           )}
-          {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
+          {error && <p className="mb-3 text-sm text-gray-700">{error}</p>}
           <div className="flex justify-end gap-2">
             <button
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
             >
               取消
             </button>
             <button
               onClick={handleConfirm}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors"
+              className="rounded border border-gray-800 bg-gray-900 px-4 py-2 text-sm text-white transition-colors disabled:opacity-50 hover:bg-gray-800"
             >
               {loading ? '删除中…' : '确认删除'}
             </button>
@@ -565,7 +563,7 @@ const DetailPanel = ({
       ),
     },
     { label: '名称', value: node.name },
-    { label: '类型', value: <TypeBadge type={node.nodeType} /> },
+    { label: '类型', value: <TypeBadge type={node.type} /> },
     {
       label: '父节点 ID',
       value: node.parentId ? (
@@ -576,7 +574,7 @@ const DetailPanel = ({
         <span className="text-gray-400">根节点</span>
       ),
     },
-    { label: '关联内容 ID', value: node.contentItemId ?? <span className="text-gray-400">—</span> },
+    { label: '关联内容 ID', value: node.contentItemUUID ?? <span className="text-gray-400">—</span> },
     { label: '创建时间', value: formatDate(node.createdAt) },
     { label: '更新时间', value: formatDate(node.updatedAt) },
   ];
@@ -587,11 +585,11 @@ const DetailPanel = ({
         <div>
           <h3 className="text-base font-semibold text-gray-900 break-all">{node.name}</h3>
           <div className="mt-1">
-            <TypeBadge type={node.nodeType} />
+            <TypeBadge type={node.type} />
           </div>
         </div>
         <div className="flex gap-1 ml-2 flex-shrink-0">
-          {node.nodeType === 'subject' && (
+          {node.type === 'FOLDER' && (
             <button
               onClick={() => onAddChild(node.id)}
               title="添加子节点"
@@ -672,7 +670,7 @@ const AdminPage = () => {
     setLoading(true);
     setError('');
     try {
-      const roots = await navigationApi.getRootNodes();
+      const roots = await structureApi.getRootNodes();
       setTree(roots.map((n) => ({ ...n, children: undefined, isExpanded: false })));
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败');
@@ -693,7 +691,7 @@ const AdminPage = () => {
     }
     setTree((prev) => updateNodeInTree(prev, node.id, (n) => ({ ...n, isLoading: true })));
     try {
-      const children = await navigationApi.getChildren(node.id);
+      const children = await structureApi.getChildren(node.id);
       setTree((prev) =>
         updateNodeInTree(prev, node.id, (n) => ({
           ...n,
@@ -710,8 +708,8 @@ const AdminPage = () => {
   // ── create ──
   const openCreate = (parentId?: string) => setModal({ open: true, mode: 'create', parentId });
 
-  const handleCreate = async (dto: CreateNavigationNodeDto | UpdateNavigationNodeDto) => {
-    const created = await navigationApi.createNode(dto as CreateNavigationNodeDto);
+  const handleCreate = async (dto: CreateStructureNodeDto | UpdateStructureNodeDto) => {
+    const created = await structureApi.createNode(dto as CreateStructureNodeDto);
     const newNode: TreeNode = { ...created, isExpanded: false };
     if (modal.parentId) {
       setTree((prev) => insertChildInTree(prev, modal.parentId!, newNode));
@@ -723,8 +721,8 @@ const AdminPage = () => {
   // ── edit ──
   const openEdit = (node: TreeNode) => setModal({ open: true, mode: 'edit', node });
 
-  const handleEdit = async (dto: CreateNavigationNodeDto | UpdateNavigationNodeDto) => {
-    const updated = await navigationApi.updateNode(modal.node!.id, dto as UpdateNavigationNodeDto);
+  const handleEdit = async (dto: CreateStructureNodeDto | UpdateStructureNodeDto) => {
+    const updated = await structureApi.updateNode(modal.node!.id, dto as UpdateStructureNodeDto);
     setTree((prev) => updateNodeInTree(prev, updated.id, (n) => ({ ...n, ...updated })));
     if (selected?.id === updated.id) setSelected((prev) => ({ ...prev!, ...updated }));
   };
@@ -732,7 +730,7 @@ const AdminPage = () => {
   // ── delete ──
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await navigationApi.deleteNode(deleteTarget.id);
+    await structureApi.deleteNode(deleteTarget.id);
     setTree((prev) => removeNodeFromTree(prev, deleteTarget.id));
     if (selected?.id === deleteTarget.id) setSelected(null);
     setDeleteTarget(null);
@@ -741,14 +739,14 @@ const AdminPage = () => {
   const totalNodes = countNodes(tree);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex h-screen flex-col bg-background">
       {/* ── page header ── */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-gray-100">
             <svg
               viewBox="0 0 24 24"
-              className="w-4 h-4 text-white"
+              className="h-4 w-4 text-gray-700"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -763,7 +761,7 @@ const AdminPage = () => {
         </div>
         <div className="flex items-center gap-3">
           {/* stat */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600">
+          <div className="hidden items-center gap-1.5 rounded border border-gray-200 px-3 py-1.5 text-sm text-gray-600 sm:flex">
             <svg
               viewBox="0 0 24 24"
               className="w-4 h-4"
@@ -783,7 +781,7 @@ const AdminPage = () => {
             onClick={loadRoots}
             disabled={loading}
             title="刷新"
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+            className="rounded border border-transparent p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40"
           >
             <svg
               viewBox="0 0 24 24"
@@ -801,7 +799,7 @@ const AdminPage = () => {
           {/* add root */}
           <button
             onClick={() => openCreate()}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 rounded border border-gray-800 bg-gray-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-gray-800"
           >
             <svg
               viewBox="0 0 24 24"
@@ -820,8 +818,8 @@ const AdminPage = () => {
       {/* ── main content ── */}
       <div className="flex flex-1 overflow-hidden">
         {/* left: tree panel */}
-        <aside className="w-72 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-100">
+        <aside className="flex w-72 flex-shrink-0 flex-col border-r border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-4 py-3">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">节点树</h2>
           </div>
           <div className="flex-1 overflow-y-auto px-2 py-2">
@@ -903,7 +901,7 @@ const AdminPage = () => {
         {/* right: detail panel */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-6 h-full">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full max-h-full p-6">
+            <div className="h-full max-h-full border border-gray-200 bg-white p-6">
               <DetailPanel
                 node={selected}
                 onEdit={openEdit}
