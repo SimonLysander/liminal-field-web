@@ -38,11 +38,11 @@ export const contentItemsApi = {
 };
 
 export const notesApi = {
-  getById: (id: string) => request<ContentItem>(`/content-items/notes/${id}`),
-  list: () => request<ContentItem[]>('/content-items/notes'),
+  getById: (id: string) => request<ContentItem>(`/notes/${id}`),
+  list: () => request<ContentItem[]>('/notes'),
 };
 
 export const postsApi = {
-  getById: (id: string) => request<ContentItem>(`/content-items/posts/${id}`),
-  list: () => request<ContentItem[]>('/content-items/posts'),
+  getById: (id: string) => request<ContentItem>(`/posts/${id}`),
+  list: () => request<ContentItem[]>('/posts'),
 };
