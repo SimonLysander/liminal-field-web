@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  notesApi,
-  type ContentItem,
-} from '@/services/content-items';
+import { contentItemsApi, type ContentDetail } from '@/services/content-items';
 import type { StructureNode } from '@/services/structure';
 
 interface NoteContentProps {
   activeNode: StructureNode | null;
 }
 
-/** 中间：面包屑 + 文档正文 */
 const NoteContent = ({ activeNode }: NoteContentProps) => {
-  const contentItemId =
-    activeNode?.type === 'DOC' ? activeNode.contentItemUUID ?? null : null;
-  const [contentItem, setContentItem] = useState<ContentItem | null>(null);
+  const contentItemId = activeNode?.type === 'DOC' ? activeNode.contentItemId ?? null : null;
+  const [contentItem, setContentItem] = useState<ContentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,15 +26,16 @@ const NoteContent = ({ activeNode }: NoteContentProps) => {
     const loadContentItem = async () => {
       setIsLoading(true);
       setError(null);
+
       try {
-        const item = await notesApi.getById(contentItemId);
+        const item = await contentItemsApi.getById(contentItemId);
         if (!isCancelled) {
           setContentItem(item);
         }
-      } catch (err) {
+      } catch (loadError) {
         if (!isCancelled) {
           setContentItem(null);
-          setError(err instanceof Error ? err.message : '加载内容失败');
+          setError(loadError instanceof Error ? loadError.message : 'Failed to load content');
         }
       } finally {
         if (!isCancelled) {
@@ -60,23 +56,23 @@ const NoteContent = ({ activeNode }: NoteContentProps) => {
       <ScrollArea className="flex-1">
         <div className="max-w-none space-y-4 p-6">
           {isLoading ? (
-            <p className="text-muted-foreground">
-              文档内容加载中... (contentItemId: {contentItemId})
-            </p>
+            <p className="text-muted-foreground">Loading content...</p>
           ) : error ? (
             <p className="text-destructive">{error}</p>
           ) : contentItem ? (
             <>
-              <h1 className="text-xl font-semibold">{contentItem.title}</h1>
-              <p className="text-xs text-muted-foreground">
-                type: {contentItem.businessType} | hash: {contentItem.currentHash}
-              </p>
-              <div className="whitespace-pre-wrap text-sm leading-7">
-                {contentItem.content ?? '内容解析中...'}
+              <div className="space-y-2">
+                <h1 className="text-xl font-semibold">{contentItem.title}</h1>
+                <p className="text-sm text-muted-foreground">{contentItem.summary}</p>
+                <p className="text-xs text-muted-foreground">
+                  status: {contentItem.status} · updated: {new Date(contentItem.updatedAt).toLocaleString('zh-CN')}
+                </p>
               </div>
+
+              <div className="whitespace-pre-wrap text-sm leading-7">{contentItem.bodyMarkdown}</div>
             </>
           ) : (
-            <p className="text-muted-foreground">从左侧选择文档查看内容</p>
+            <p className="text-muted-foreground">Select a document from the left navigator.</p>
           )}
         </div>
       </ScrollArea>

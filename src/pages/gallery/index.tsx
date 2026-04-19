@@ -3,8 +3,9 @@ import { Clock3, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  postsApi,
-  type ContentItem,
+  contentItemsApi,
+  type ContentDetail,
+  type ContentListItem,
 } from '@/services/content-items';
 
 const formatDate = (value: string) =>
@@ -17,29 +18,32 @@ const formatDate = (value: string) =>
   });
 
 const GalleryPage = () => {
-  const [posts, setPosts] = useState<ContentItem[]>([]);
-  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [items, setItems] = useState<ContentListItem[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeDetail, setActiveDetail] = useState<ContentDetail | null>(null);
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
 
-    const loadPosts = async () => {
+    const loadItems = async () => {
       setIsLoading(true);
       setError(null);
+
       try {
-        const items = await postsApi.list();
+        const result = await contentItemsApi.list();
         if (!isCancelled) {
-          setPosts(items);
-          setActivePostId(items[0]?.id ?? null);
+          setItems(result);
+          setActiveId(result[0]?.id ?? null);
         }
-      } catch (err) {
+      } catch (loadError) {
         if (!isCancelled) {
-          setPosts([]);
-          setActivePostId(null);
-          setError(err instanceof Error ? err.message : '加载图文展馆失败');
+          setItems([]);
+          setActiveId(null);
+          setError(loadError instanceof Error ? loadError.message : 'Failed to load gallery.');
         }
       } finally {
         if (!isCancelled) {
@@ -48,34 +52,71 @@ const GalleryPage = () => {
       }
     };
 
-    void loadPosts();
+    void loadItems();
 
     return () => {
       isCancelled = true;
     };
   }, []);
 
-  const filteredPosts = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    if (!keyword) return posts;
-    return posts.filter((post) => {
-      const haystack = `${post.title}\n${post.content ?? ''}`.toLowerCase();
-      return haystack.includes(keyword);
-    });
-  }, [posts, query]);
+    if (!keyword) return items;
 
-  const activePost =
-    filteredPosts.find((post) => post.id === activePostId) ??
-    filteredPosts[0] ??
-    null;
+    return items.filter((item) => `${item.title}\n${item.summary}`.toLowerCase().includes(keyword));
+  }, [items, query]);
+
+  useEffect(() => {
+    const nextActiveId =
+      filteredItems.find((item) => item.id === activeId)?.id ?? filteredItems[0]?.id ?? null;
+
+    if (nextActiveId !== activeId) {
+      setActiveId(nextActiveId);
+    }
+  }, [activeId, filteredItems]);
+
+  useEffect(() => {
+    if (!activeId) {
+      setActiveDetail(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadDetail = async () => {
+      setIsDetailLoading(true);
+
+      try {
+        const detail = await contentItemsApi.getById(activeId);
+        if (!isCancelled) {
+          setActiveDetail(detail);
+        }
+      } catch (loadError) {
+        if (!isCancelled) {
+          setActiveDetail(null);
+          setError(loadError instanceof Error ? loadError.message : 'Failed to load content detail.');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsDetailLoading(false);
+        }
+      }
+    };
+
+    void loadDetail();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeId]);
 
   const timelineItems = useMemo(
     () =>
-      filteredPosts.map((post) => ({
-        id: post.id,
-        label: formatDate(post.updatedAt).slice(0, 10),
+      filteredItems.map((item) => ({
+        id: item.id,
+        label: formatDate(item.updatedAt).slice(0, 10),
       })),
-    [filteredPosts],
+    [filteredItems],
   );
 
   return (
@@ -85,8 +126,8 @@ const GalleryPage = () => {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索图文标题或正文..."
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search title or summary..."
             className="h-8 pl-8 text-sm"
           />
         </div>
@@ -96,34 +137,30 @@ const GalleryPage = () => {
         <aside className="w-72 shrink-0 border-r border-border">
           <ScrollArea className="h-full">
             <div className="space-y-2 p-3">
-              <div className="text-xs text-muted-foreground">图文序列</div>
+              <div className="text-xs text-muted-foreground">Content Sequence</div>
               {isLoading ? (
-                <p className="py-6 text-sm text-muted-foreground">加载中...</p>
+                <p className="py-6 text-sm text-muted-foreground">Loading...</p>
               ) : error ? (
                 <p className="py-6 text-sm text-destructive">{error}</p>
-              ) : filteredPosts.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">暂无图文内容</p>
+              ) : filteredItems.length === 0 ? (
+                <p className="py-6 text-sm text-muted-foreground">No content found.</p>
               ) : (
-                filteredPosts.map((post) => {
-                  const isActive = activePost?.id === post.id;
+                filteredItems.map((item) => {
+                  const isActive = activeDetail?.id === item.id;
                   return (
                     <button
-                      key={post.id}
+                      key={item.id}
                       type="button"
-                      onClick={() => setActivePostId(post.id)}
+                      onClick={() => setActiveId(item.id)}
                       className={`w-full rounded-md border px-3 py-3 text-left transition-colors ${
-                        isActive
-                          ? 'border-border bg-accent'
-                          : 'border-border hover:bg-accent/50'
+                        isActive ? 'border-border bg-accent' : 'border-border hover:bg-accent/50'
                       }`}
                     >
-                      <div className="line-clamp-1 text-sm font-medium">{post.title}</div>
+                      <div className="line-clamp-1 text-sm font-medium">{item.title}</div>
                       <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {post.content ?? '内容待解析'}
+                        {item.summary}
                       </div>
-                      <div className="mt-2 text-[11px] text-muted-foreground">
-                        {formatDate(post.updatedAt)}
-                      </div>
+                      <div className="mt-2 text-[11px] text-muted-foreground">{formatDate(item.updatedAt)}</div>
                     </button>
                   );
                 })
@@ -135,33 +172,30 @@ const GalleryPage = () => {
         <main className="min-w-0 flex-1">
           <ScrollArea className="h-full">
             <div className="space-y-4 p-6">
-              {activePost ? (
+              {isDetailLoading ? (
+                <div className="p-6 text-sm text-muted-foreground">Loading detail...</div>
+              ) : activeDetail ? (
                 <>
                   <div className="border border-border p-4">
                     <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock3 className="h-3.5 w-3.5" />
-                      <span>{formatDate(activePost.updatedAt)}</span>
+                      <span>{formatDate(activeDetail.updatedAt)}</span>
                       <span>|</span>
-                      <span>{activePost.currentHash}</span>
+                      <span>{activeDetail.status}</span>
                     </div>
                     <div className="flex aspect-[16/9] items-center justify-center border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
-                      post 主视觉区
+                      gallery visual area
                     </div>
                   </div>
 
                   <section className="border border-border p-6">
-                    <h1 className="text-xl font-semibold">
-                      {activePost.title}
-                    </h1>
-                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7">
-                      {activePost.content ?? '内容解析中...'}
-                    </div>
+                    <h1 className="text-xl font-semibold">{activeDetail.title}</h1>
+                    <p className="mt-3 text-sm text-muted-foreground">{activeDetail.summary}</p>
+                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7">{activeDetail.bodyMarkdown}</div>
                   </section>
                 </>
               ) : (
-                <div className="p-6 text-sm text-muted-foreground">
-                  请选择一篇 post 查看内容
-                </div>
+                <div className="p-6 text-sm text-muted-foreground">Select one item to inspect it.</div>
               )}
             </div>
           </ScrollArea>
@@ -170,21 +204,19 @@ const GalleryPage = () => {
         <aside className="w-52 shrink-0 border-l border-border">
           <ScrollArea className="h-full">
             <div className="space-y-2 p-3">
-              <div className="text-xs text-muted-foreground">时间索引</div>
+              <div className="text-xs text-muted-foreground">Time Index</div>
               {timelineItems.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">暂无时间索引</p>
+                <p className="py-6 text-sm text-muted-foreground">No timeline yet.</p>
               ) : (
                 timelineItems.map((item) => {
-                  const isActive = item.id === activePost?.id;
+                  const isActive = item.id === activeDetail?.id;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setActivePostId(item.id)}
+                      onClick={() => setActiveId(item.id)}
                       className={`block w-full rounded-md border border-transparent px-3 py-2 text-left text-sm transition-colors ${
-                        isActive
-                          ? 'border-border bg-accent'
-                          : 'hover:bg-accent/50'
+                        isActive ? 'border-border bg-accent' : 'hover:bg-accent/50'
                       }`}
                     >
                       {item.label}

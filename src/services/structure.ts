@@ -1,32 +1,29 @@
 export type StructureNodeType = 'FOLDER' | 'DOC';
-
+export type StructureVisibility = 'public' | 'all';
 export interface StructureNode {
   id: string;
   name: string;
   type: StructureNodeType;
   parentId?: string;
-  contentItemUUID?: string;
+  contentItemId?: string;
   sortOrder: number;
   hasChildren: boolean;
   createdAt: string;
   updatedAt?: string;
 }
-
 export interface CreateStructureNodeDto {
   name: string;
   type: StructureNodeType;
   parentId?: string;
-  contentItemUUID?: string;
+  contentItemId?: string;
   sortOrder?: number;
 }
-
 export interface UpdateStructureNodeDto {
   name?: string;
   parentId?: string;
-  contentItemUUID?: string;
+  contentItemId?: string;
   sortOrder?: number;
 }
-
 const BASE_URL = '/api/v1';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -46,36 +43,54 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return JSON.parse(text);
 }
 
+function toQueryString(params: Record<string, string | undefined>) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 export const structureApi = {
-  listNodes: (parentId?: string) =>
+  listNodes: (
+    parentId?: string,
+    options?: { visibility?: StructureVisibility },
+  ) =>
     request<StructureNode[]>(
-      parentId ? `/navigation/structure?parentId=${parentId}` : '/navigation/structure',
+      `/structure-nodes${toQueryString({
+        parentId,
+        visibility: options?.visibility,
+      })}`,
     ),
 
-  getRootNodes: () => request<StructureNode[]>('/navigation/structure'),
+  getRootNodes: (options?: { visibility?: StructureVisibility }) =>
+    structureApi.listNodes(undefined, options),
 
-  getChildren: (parentId: string) =>
-    request<StructureNode[]>(`/navigation/structure?parentId=${parentId}`),
+  getChildren: (parentId: string, options?: { visibility?: StructureVisibility }) =>
+    structureApi.listNodes(parentId, options),
 
   getPathByNodeId: (id: string) =>
-    request<StructureNode[]>(`/navigation/structure/path/node/${id}`),
+    request<StructureNode[]>(`/structure-nodes/${id}/path`),
 
-  getPathByContentItemUUID: (contentItemUUID: string) =>
-    request<StructureNode[]>(
-      `/navigation/structure/path/content/${contentItemUUID}`,
-    ),
+  getPathByContentItemId: (contentItemId: string) =>
+    request<StructureNode[]>(`/contents/${contentItemId}/structure-path`),
 
   createNode: (dto: CreateStructureNodeDto) =>
-    request<StructureNode>('/navigation/structure', {
+    request<StructureNode>('/structure-nodes', {
       method: 'POST',
       body: JSON.stringify(dto),
     }),
 
   updateNode: (id: string, dto: UpdateStructureNodeDto) =>
-    request<StructureNode>(`/navigation/structure/${id}`, {
+    request<StructureNode>(`/structure-nodes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(dto),
     }),
-
-  deleteNode: (id: string) => request<void>(`/navigation/${id}`, { method: 'DELETE' }),
+  deleteNode: (id: string) =>
+    request<void>(`/structure-nodes/${id}`, { method: 'DELETE' }),
 };
