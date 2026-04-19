@@ -1,11 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof document === 'undefined') return 'light';
-    return (document.documentElement.classList.contains('dark') ? 'dark' : 'light') as Theme;
+    try {
+      const stored = localStorage.getItem('liminal-theme');
+      if (stored === 'dark' || stored === 'light') {
+        document.documentElement.classList.toggle('dark', stored === 'dark');
+        return stored;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   });
 
   const setTheme = useCallback((next: Theme) => {
@@ -17,13 +27,6 @@ export function useTheme() {
       /* ignore */
     }
   }, []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('liminal-theme') as Theme | null;
-    if (stored === 'dark' || stored === 'light') {
-      setTheme(stored);
-    }
-  }, [setTheme]);
 
   return { theme, setTheme };
 }
