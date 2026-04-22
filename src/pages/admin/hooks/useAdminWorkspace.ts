@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { contentItemsApi } from '@/services/content-items';
 import type {
   CreateStructureNodeDto,
@@ -10,15 +10,20 @@ import {
   insertChildInTree,
   parseError,
   removeNodeFromTree,
-  toEditorState,
   updateNodeInTree,
 } from '../helpers';
 import {
-  EMPTY_EDITOR_STATE,
-  type EditorState,
+  EMPTY_DRAFT_EDITOR_STATE,
+  EMPTY_DRAFT_PRESENCE,
+  EMPTY_FORMAL_CONTENT,
+  type DraftEditorState,
   type ModalState,
   type NodeSubmitPayload,
   type TreeNode,
+  type WorkspaceMode,
+  toDraftEditorStateFromDetail,
+  toDraftEditorStateFromDraft,
+  toFormalContentState,
 } from '../types';
 
 export function useAdminWorkspace() {
@@ -26,9 +31,15 @@ export function useAdminWorkspace() {
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [modal, setModal] = useState<ModalState>({ open: false, mode: 'create' });
+  const [modal, setModal] = useState<ModalState>({
+    open: false,
+    mode: 'create',
+  });
   const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
-  const [editorState, setEditorState] = useState<EditorState>(EMPTY_EDITOR_STATE);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('formal');
+  const [formalContent, setFormalContent] = useState(EMPTY_FORMAL_CONTENT);
+  const [draftState, setDraftState] = useState(EMPTY_DRAFT_EDITOR_STATE);
+  const [draftPresence, setDraftPresence] = useState(EMPTY_DRAFT_PRESENCE);
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState('');
   const [draftInfo, setDraftInfo] = useState('');
@@ -36,8 +47,14 @@ export function useAdminWorkspace() {
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('');
   const [autosaveError, setAutosaveError] = useState('');
-  const [assets, setAssets] = useState<Awaited<ReturnType<typeof contentItemsApi.listAssets>>>([]);
+  const [assets, setAssets] = useState<
+    Awaited<ReturnType<typeof contentItemsApi.listAssets>>
+  >([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
+  const [history, setHistory] = useState<
+    Awaited<ReturnType<typeof contentItemsApi.getHistory>>
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
 
   const totalNodes = useMemo(() => countNodes(tree), [tree]);
@@ -49,7 +66,13 @@ export function useAdminWorkspace() {
 
     try {
       const roots = await structureApi.getRootNodes({ visibility: 'all' });
-      setTree(roots.map((node) => ({ ...node, children: undefined, isExpanded: false })));
+      setTree(
+        roots.map((node) => ({
+          ...node,
+          children: undefined,
+          isExpanded: false,
+        })),
+      );
     } catch (loadError) {
       setError(parseError(loadError, 'Failed to load navigation tree.'));
     } finally {
@@ -61,85 +84,109 @@ export function useAdminWorkspace() {
     void loadRoots();
   }, [loadRoots]);
 
-  const loadContentWorkspace = useCallback(async (contentItemId: string) => {
-    setContentLoading(true);
-    setContentError('');
-    setDraftInfo('');
-    setActionMessage('');
-    setAssetsLoading(true);
-
+  const probeDraftPresence = useCallback(async (contentItemId: string) => {
     try {
-      const [detail, assetsResult] = await Promise.all([
-        contentItemsApi.getById(contentItemId, { visibility: 'all' }),
-        contentItemsApi.listAssets(contentItemId),
-      ]);
-
-      setEditorState(toEditorState(detail));
-      setAssets(assetsResult);
-      setIsDirty(false);
-      setLastDraftSavedAt('');
-      setAutosaveError('');
-
-      try {
-        const draft = await contentItemsApi.getDraft(contentItemId);
-        // Restore the server draft first so the workspace resumes the latest
-        // in-progress edits instead of silently overwriting them with the
-        // published document body.
-        setEditorState({
-          title: draft.title,
-          summary: draft.summary,
-          status: detail.status,
-          bodyMarkdown: draft.bodyMarkdown,
-          changeNote: draft.changeNote,
-          changeType: 'patch',
-        });
-        setDraftInfo(`Restored draft from ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`);
-        setLastDraftSavedAt(draft.savedAt);
-      } catch (draftError) {
-        const message = parseError(draftError, 'Failed to load draft.');
-        if (!message.includes('404')) {
-          setDraftInfo(`Draft load failed: ${message}`);
-        }
+      const draft = await contentItemsApi.getDraft(contentItemId);
+      setDraftPresence({
+        exists: true,
+        savedAt: draft.savedAt,
+      });
+      return draft;
+    } catch (draftError) {
+      const message = parseError(draftError, 'Failed to load draft.');
+      if (!message.includes('404')) {
+        throw draftError;
       }
-    } catch (workspaceError) {
-      setContentError(parseError(workspaceError, 'Failed to load content workspace.'));
-      setEditorState(EMPTY_EDITOR_STATE);
-      setAssets([]);
-      setIsDirty(false);
-      setLastDraftSavedAt('');
-    } finally {
-      setContentLoading(false);
-      setAssetsLoading(false);
+
+      setDraftPresence(EMPTY_DRAFT_PRESENCE);
+      return null;
     }
   }, []);
 
+  const loadFormalContent = useCallback(
+    async (contentItemId: string) => {
+      setWorkspaceMode('formal');
+      setContentLoading(true);
+      setContentError('');
+      setDraftInfo('');
+      setActionMessage('');
+      setAssetsLoading(true);
+      setHistoryLoading(true);
+
+      try {
+        const [detail, assetsResult, historyResult, existingDraft] =
+          await Promise.all([
+            contentItemsApi.getById(contentItemId, { visibility: 'all' }),
+            contentItemsApi.listAssets(contentItemId),
+            contentItemsApi.getHistory(contentItemId),
+            probeDraftPresence(contentItemId),
+          ]);
+
+        setFormalContent(toFormalContentState(detail));
+        setDraftState(toDraftEditorStateFromDetail(detail));
+        setAssets(assetsResult);
+        setHistory(historyResult);
+        setIsDirty(false);
+        setLastDraftSavedAt(existingDraft?.savedAt ?? '');
+        setAutosaveError('');
+      } catch (workspaceError) {
+        setContentError(
+          parseError(workspaceError, 'Failed to load formal content.'),
+        );
+        setFormalContent(EMPTY_FORMAL_CONTENT);
+        setDraftState(EMPTY_DRAFT_EDITOR_STATE);
+        setAssets([]);
+        setHistory([]);
+        setDraftPresence(EMPTY_DRAFT_PRESENCE);
+        setIsDirty(false);
+        setLastDraftSavedAt('');
+      } finally {
+        setContentLoading(false);
+        setAssetsLoading(false);
+        setHistoryLoading(false);
+      }
+    },
+    [probeDraftPresence],
+  );
+
   useEffect(() => {
     if (!isDocSelected || !selectedNode?.contentItemId) {
-      setEditorState(EMPTY_EDITOR_STATE);
+      setWorkspaceMode('formal');
+      setFormalContent(EMPTY_FORMAL_CONTENT);
+      setDraftState(EMPTY_DRAFT_EDITOR_STATE);
+      setDraftPresence(EMPTY_DRAFT_PRESENCE);
       setContentError('');
       setDraftInfo('');
       setActionMessage('');
       setAssets([]);
+      setHistory([]);
       setIsDirty(false);
       setIsAutosaving(false);
       setLastDraftSavedAt('');
       setAutosaveError('');
+      setHistoryLoading(false);
       return;
     }
 
-    void loadContentWorkspace(selectedNode.contentItemId);
-  }, [isDocSelected, loadContentWorkspace, selectedNode]);
+    void loadFormalContent(selectedNode.contentItemId);
+  }, [isDocSelected, loadFormalContent, selectedNode]);
 
   const handleExpand = useCallback(async (node: TreeNode) => {
     if (node.isExpanded) {
       setTree((current) =>
-        updateNodeInTree(current, node.id, (target) => ({ ...target, isExpanded: false })),
+        updateNodeInTree(current, node.id, (target) => ({
+          ...target,
+          isExpanded: false,
+        })),
       );
       return;
     }
 
     setTree((current) =>
-      updateNodeInTree(current, node.id, (target) => ({ ...target, isLoading: true })),
+      updateNodeInTree(current, node.id, (target) => ({
+        ...target,
+        isLoading: true,
+      })),
     );
 
     try {
@@ -156,13 +203,18 @@ export function useAdminWorkspace() {
       );
     } catch {
       setTree((current) =>
-        updateNodeInTree(current, node.id, (target) => ({ ...target, isLoading: false })),
+        updateNodeInTree(current, node.id, (target) => ({
+          ...target,
+          isLoading: false,
+        })),
       );
     }
   }, []);
 
-  const openCreate = (parentId?: string) => setModal({ open: true, mode: 'create', parentId });
-  const openEdit = (node: TreeNode) => setModal({ open: true, mode: 'edit', node });
+  const openCreate = (parentId?: string) =>
+    setModal({ open: true, mode: 'create', parentId });
+  const openEdit = (node: TreeNode) =>
+    setModal({ open: true, mode: 'edit', node });
   const closeModal = () => setModal({ open: false, mode: 'create' });
 
   const handleCreateOrEdit = async (payload: NodeSubmitPayload) => {
@@ -172,10 +224,15 @@ export function useAdminWorkspace() {
         payload.node as UpdateStructureNodeDto,
       );
       setTree((current) =>
-        updateNodeInTree(current, updated.id, (target) => ({ ...target, ...updated })),
+        updateNodeInTree(current, updated.id, (target) => ({
+          ...target,
+          ...updated,
+        })),
       );
       if (selectedNode?.id === updated.id) {
-        setSelectedNode((current) => (current ? { ...current, ...updated } : current));
+        setSelectedNode((current) =>
+          current ? { ...current, ...updated } : current,
+        );
       }
       return;
     }
@@ -189,12 +246,10 @@ export function useAdminWorkspace() {
         throw new Error('DOC nodes must be created with a content item.');
       }
 
-      // Create the content item before the DOC node so every document node is
-      // born with a valid binding and can immediately support save, draft, and assets.
       const createdContent = await contentItemsApi.create({
         title: docCreate.title,
         summary: docCreate.summary,
-        status: 'staged',
+        status: 'committed',
         bodyMarkdown: `# ${docCreate.title}\n`,
         changeNote: 'Initial content',
         changeType: 'major',
@@ -226,128 +281,287 @@ export function useAdminWorkspace() {
     setDeleteTarget(null);
   };
 
-  const handleEditorChange = <K extends keyof EditorState>(key: K, value: EditorState[K]) => {
-    setEditorState((current) => ({ ...current, [key]: value }));
+  const handleDraftEditorChange = <K extends keyof DraftEditorState>(
+    key: K,
+    value: DraftEditorState[K],
+  ) => {
+    setDraftState((current) => ({ ...current, [key]: value }));
     setIsDirty(true);
     setAutosaveError('');
   };
 
-  const saveDraft = useCallback(async (options?: { silent?: boolean }) => {
-    if (!selectedNode?.contentItemId) return;
+  const createDraftFromFormalVersion = useCallback(
+    async (overwrite: boolean) => {
+      if (!selectedNode?.contentItemId || !formalContent.id) return;
 
-    if (options?.silent) {
-      setIsAutosaving(true);
+      if (overwrite && draftPresence.exists) {
+        const confirmed = window.confirm(
+          'Overwrite the existing draft with the current formal version?',
+        );
+        if (!confirmed) return;
+      }
+
+      const draft = await contentItemsApi.saveDraft(selectedNode.contentItemId, {
+        title: formalContent.latestVersion.title,
+        summary: formalContent.latestVersion.summary,
+        bodyMarkdown: formalContent.bodyMarkdown,
+        changeNote: overwrite
+          ? 'Overwrite draft from current formal version'
+          : 'Draft from current formal version',
+      });
+
+      setDraftState(toDraftEditorStateFromDraft(draft));
+      setDraftPresence({
+        exists: true,
+        savedAt: draft.savedAt,
+      });
+      setLastDraftSavedAt(draft.savedAt);
+      setDraftInfo(
+        `Draft workspace ready from ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`,
+      );
+      setActionMessage('');
       setAutosaveError('');
-    }
+      setIsDirty(false);
+      setWorkspaceMode('draft');
+    },
+    [
+      draftPresence.exists,
+      formalContent.bodyMarkdown,
+      formalContent.id,
+      formalContent.latestVersion.summary,
+      formalContent.latestVersion.title,
+      selectedNode?.contentItemId,
+    ],
+  );
 
-    const draft = await contentItemsApi.saveDraft(selectedNode.contentItemId, {
-      title: editorState.title,
-      summary: editorState.summary,
-      bodyMarkdown: editorState.bodyMarkdown,
-      changeNote: editorState.changeNote,
-    });
-
-    setIsDirty(false);
-    setLastDraftSavedAt(draft.savedAt);
-
-    if (options?.silent) {
-      setDraftInfo('');
-      setIsAutosaving(false);
-      return;
-    }
-
-    setDraftInfo(`Draft saved at ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`);
-    setActionMessage('');
-    setIsAutosaving(false);
-  }, [editorState.bodyMarkdown, editorState.changeNote, editorState.summary, editorState.title, selectedNode?.contentItemId]);
-
-  const saveContent = async (options?: {
-    statusOverride?: EditorState['status'];
-    action?: 'commit' | 'publish' | 'unpublish';
-  }) => {
+  const resumeDraft = useCallback(async () => {
     if (!selectedNode?.contentItemId) return;
 
-    const nextStatus = options?.statusOverride ?? editorState.status;
+    setContentLoading(true);
+    setContentError('');
+    try {
+      const draft = await contentItemsApi.getDraft(selectedNode.contentItemId);
+      setDraftState(toDraftEditorStateFromDraft(draft));
+      setDraftPresence({
+        exists: true,
+        savedAt: draft.savedAt,
+      });
+      setLastDraftSavedAt(draft.savedAt);
+      setDraftInfo(
+        `Resumed draft from ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`,
+      );
+      setActionMessage('');
+      setAutosaveError('');
+      setIsDirty(false);
+      setWorkspaceMode('draft');
+    } catch (draftError) {
+      setContentError(parseError(draftError, 'Failed to resume draft.'));
+    } finally {
+      setContentLoading(false);
+    }
+  }, [selectedNode?.contentItemId]);
+
+  const saveDraft = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!selectedNode?.contentItemId) return;
+
+      if (options?.silent) {
+        setIsAutosaving(true);
+        setAutosaveError('');
+      }
+
+      const draft = await contentItemsApi.saveDraft(selectedNode.contentItemId, {
+        title: draftState.title,
+        summary: draftState.summary,
+        bodyMarkdown: draftState.bodyMarkdown,
+        changeNote: draftState.changeNote,
+      });
+
+      setDraftPresence({
+        exists: true,
+        savedAt: draft.savedAt,
+      });
+      setIsDirty(false);
+      setLastDraftSavedAt(draft.savedAt);
+
+      if (options?.silent) {
+        setDraftInfo('');
+        setIsAutosaving(false);
+        return;
+      }
+
+      setDraftInfo(
+        `Draft saved at ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`,
+      );
+      setActionMessage('');
+      setIsAutosaving(false);
+    },
+    [
+      draftState.bodyMarkdown,
+      draftState.changeNote,
+      draftState.summary,
+      draftState.title,
+      selectedNode?.contentItemId,
+    ],
+  );
+
+  const commitDraft = useCallback(async () => {
+    if (!selectedNode?.contentItemId) return;
+
     const saved = await contentItemsApi.save(selectedNode.contentItemId, {
-      title: editorState.title,
-      summary: editorState.summary,
-      status: nextStatus,
-      bodyMarkdown: editorState.bodyMarkdown,
-      changeNote: editorState.changeNote,
-      changeType: editorState.changeType,
-      action: options?.action,
+      title: draftState.title,
+      summary: draftState.summary,
+      status: 'committed',
+      bodyMarkdown: draftState.bodyMarkdown,
+      changeNote: draftState.changeNote,
+      changeType: draftState.changeType,
+      action: 'commit',
     });
 
-    setEditorState((current) => ({
-      ...current,
-      title: saved.title,
-      summary: saved.summary,
-      status: saved.status,
-      bodyMarkdown: saved.bodyMarkdown,
-    }));
-    setActionMessage(
-      `${
-        saved.status === 'published'
-          ? 'Content published'
-          : saved.status === 'staged'
-            ? 'Content committed'
-            : 'Content saved'
-      } at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
-    );
+    await contentItemsApi.deleteDraft(selectedNode.contentItemId);
+
+    setFormalContent(toFormalContentState(saved));
+    setDraftPresence(EMPTY_DRAFT_PRESENCE);
+    setDraftState(toDraftEditorStateFromDetail(saved));
     setDraftInfo('');
     setIsDirty(false);
+    setLastDraftSavedAt('');
     setAutosaveError('');
-  };
+    setWorkspaceMode('formal');
+    setActionMessage(
+      `New committed version created at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
+    );
+    setHistory(await contentItemsApi.getHistory(selectedNode.contentItemId));
+    setAssets(await contentItemsApi.listAssets(selectedNode.contentItemId));
+  }, [
+    draftState.bodyMarkdown,
+    draftState.changeNote,
+    draftState.changeType,
+    draftState.summary,
+    draftState.title,
+    selectedNode?.contentItemId,
+  ]);
 
-  const publishContent = async () => {
-    // Publishing is a product action, not just "save whatever the current dropdown says".
-    // Force the outgoing status so the primary button behaves exactly as the label promises.
-    await saveContent({ statusOverride: 'published', action: 'publish' });
-  };
-
-  const commitContent = async () => {
-    // Commit moves the current editor work into the formal pre-publish state
-    // and is the only action that should create a Git history entry.
-    await saveContent({ statusOverride: 'staged', action: 'commit' });
-  };
-
-  const unpublishContent = async () => {
-    // Unpublish always returns the formal content back to staged instead of the
-    // editor draft buffer, so published content and autosave remain separate concepts.
-    await saveContent({ statusOverride: 'staged', action: 'unpublish' });
-  };
-
-  const uploadAsset = async (file: File) => {
+  const discardDraft = useCallback(async () => {
     if (!selectedNode?.contentItemId) return;
 
-    setAssetsLoading(true);
-    try {
-      await contentItemsApi.uploadAsset(selectedNode.contentItemId, file);
-      const nextAssets = await contentItemsApi.listAssets(selectedNode.contentItemId);
-      setAssets(nextAssets);
-      setActionMessage(`Uploaded asset: ${file.name}.`);
-    } finally {
-      setAssetsLoading(false);
-    }
-  };
+    await contentItemsApi.deleteDraft(selectedNode.contentItemId);
+    setDraftPresence(EMPTY_DRAFT_PRESENCE);
+    setDraftState(toDraftEditorStateFromDetail({
+      id: formalContent.id,
+      title: formalContent.latestVersion.title,
+      summary: formalContent.latestVersion.summary,
+      status: formalContent.status,
+      latestVersion: formalContent.latestVersion,
+      publishedVersion: formalContent.publishedVersion,
+      hasUnpublishedChanges: formalContent.hasUnpublishedChanges,
+      bodyMarkdown: formalContent.bodyMarkdown,
+      plainText: '',
+      assetRefs: [],
+      changeLogs: [],
+      createdAt: '',
+      updatedAt: formalContent.updatedAt,
+    }));
+    setDraftInfo('');
+    setLastDraftSavedAt('');
+    setAutosaveError('');
+    setIsDirty(false);
+    setWorkspaceMode('formal');
+    setActionMessage('Draft discarded.');
+  }, [formalContent, selectedNode?.contentItemId]);
 
-  const insertAssetPath = (path: string) => {
-    setEditorState((current) => ({
+  const publishContent = useCallback(async () => {
+    if (!selectedNode?.contentItemId) return;
+
+    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+      title: formalContent.latestVersion.title,
+      summary: formalContent.latestVersion.summary,
+      status: 'published',
+      bodyMarkdown: formalContent.bodyMarkdown,
+      changeNote: 'Publish committed version',
+      changeType: 'patch',
+      action: 'publish',
+    });
+
+    setFormalContent(toFormalContentState(saved));
+    setActionMessage(
+      `Content published at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
+    );
+  }, [
+    formalContent.bodyMarkdown,
+    formalContent.latestVersion.summary,
+    formalContent.latestVersion.title,
+    selectedNode?.contentItemId,
+  ]);
+
+  const unpublishContent = useCallback(async () => {
+    if (!selectedNode?.contentItemId) return;
+
+    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+      title: formalContent.latestVersion.title,
+      summary: formalContent.latestVersion.summary,
+      status: 'committed',
+      bodyMarkdown: formalContent.bodyMarkdown,
+      changeNote: 'Unpublish current version',
+      changeType: 'patch',
+      action: 'unpublish',
+    });
+
+    setFormalContent(toFormalContentState(saved));
+    setActionMessage(
+      `Content unpublished at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
+    );
+  }, [
+    formalContent.bodyMarkdown,
+    formalContent.latestVersion.summary,
+    formalContent.latestVersion.title,
+    selectedNode?.contentItemId,
+  ]);
+
+  const uploadAsset = useCallback(
+    async (file: File) => {
+      if (!selectedNode?.contentItemId) return;
+
+      setAssetsLoading(true);
+      try {
+        await contentItemsApi.uploadAsset(selectedNode.contentItemId, file);
+        const nextAssets = await contentItemsApi.listAssets(
+          selectedNode.contentItemId,
+        );
+        setAssets(nextAssets);
+        setActionMessage(`Uploaded asset: ${file.name}.`);
+      } finally {
+        setAssetsLoading(false);
+      }
+    },
+    [selectedNode?.contentItemId],
+  );
+
+  const insertAssetPath = useCallback((path: string) => {
+    setDraftState((current) => ({
       ...current,
-      bodyMarkdown: `${current.bodyMarkdown}${current.bodyMarkdown.endsWith('\n') || !current.bodyMarkdown ? '' : '\n'}![](${path})\n`,
+      bodyMarkdown: `${current.bodyMarkdown}${
+        current.bodyMarkdown.endsWith('\n') || !current.bodyMarkdown ? '' : '\n'
+      }![](${path})\n`,
     }));
     setIsDirty(true);
     setAutosaveError('');
-  };
+  }, []);
 
   useEffect(() => {
-    if (!selectedNode?.contentItemId || !isDirty || contentLoading) {
+    if (
+      workspaceMode !== 'draft' ||
+      !selectedNode?.contentItemId ||
+      !isDirty ||
+      contentLoading
+    ) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      // Autosave stays in the workspace layer instead of the input component so the future editor
-      // can be replaced without rewriting save cadence, dirty tracking, or backend draft semantics.
+      // Autosave belongs to the draft workspace only. The formal content view
+      // should stay free of editing side effects so published and committed
+      // versions remain clearly distinct from the working copy.
       void saveDraft({ silent: true }).catch((autosaveFailure) => {
         setIsAutosaving(false);
         setAutosaveError(parseError(autosaveFailure, 'Autosave failed.'));
@@ -357,7 +571,13 @@ export function useAdminWorkspace() {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [contentLoading, isDirty, saveDraft, selectedNode?.contentItemId]);
+  }, [
+    contentLoading,
+    isDirty,
+    saveDraft,
+    selectedNode?.contentItemId,
+    workspaceMode,
+  ]);
 
   return {
     tree,
@@ -366,7 +586,10 @@ export function useAdminWorkspace() {
     error,
     modal,
     deleteTarget,
-    editorState,
+    workspaceMode,
+    formalContent,
+    draftState,
+    draftPresence,
     contentLoading,
     contentError,
     draftInfo,
@@ -376,6 +599,8 @@ export function useAdminWorkspace() {
     autosaveError,
     assets,
     assetsLoading,
+    history,
+    historyLoading,
     actionMessage,
     totalNodes,
     loadRoots,
@@ -387,13 +612,17 @@ export function useAdminWorkspace() {
     setDeleteTarget,
     handleCreateOrEdit,
     handleDelete,
-    handleEditorChange,
-    loadContentWorkspace,
+    handleDraftEditorChange,
+    loadFormalContent,
+    createDraftFromFormalVersion,
+    resumeDraft,
     saveDraft,
-    commitContent,
+    commitDraft,
+    discardDraft,
     publishContent,
     unpublishContent,
     uploadAsset,
     insertAssetPath,
+    setWorkspaceMode,
   };
 }

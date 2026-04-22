@@ -1,5 +1,6 @@
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { DocEditorPanel } from './components/DocEditorPanel';
+import { ContentVersionView } from './components/ContentVersionView';
+import { DraftWorkspace } from './components/DraftWorkspace';
 import { FolderDetailPanel } from './components/FolderDetailPanel';
 import { NodeFormModal } from './components/NodeFormModal';
 import { TreePanel } from './components/TreePanel';
@@ -15,7 +16,7 @@ const AdminPage = () => {
           <div>
             <h1 className="text-lg font-semibold text-slate-900">Admin Workspace</h1>
             <p className="mt-1 text-sm text-slate-500">
-              Manage structure, editor drafts, staged content, published documents, and assets in one place.
+              Manage structure, editor drafts, committed content, published documents, and assets in one place.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -63,28 +64,59 @@ const AdminPage = () => {
             ) : workspace.selectedNode.type === 'FOLDER' ? (
               <FolderDetailPanel node={workspace.selectedNode} />
             ) : workspace.selectedNode.contentItemId ? (
-              <DocEditorPanel
-                node={workspace.selectedNode}
-                editorState={workspace.editorState}
-                loading={workspace.contentLoading}
-                error={workspace.contentError}
-                draftInfo={workspace.draftInfo}
-                isDirty={workspace.isDirty}
-                isAutosaving={workspace.isAutosaving}
-                lastDraftSavedAt={workspace.lastDraftSavedAt}
-                autosaveError={workspace.autosaveError}
-                assets={workspace.assets}
-                assetsLoading={workspace.assetsLoading}
-                actionMessage={workspace.actionMessage}
-                onEditorChange={workspace.handleEditorChange}
-                onReload={() => workspace.loadContentWorkspace(workspace.selectedNode!.contentItemId!)}
-                onSaveDraft={workspace.saveDraft}
-                onCommitContent={workspace.commitContent}
-                onPublishContent={workspace.publishContent}
-                onUnpublishContent={workspace.unpublishContent}
-                onUploadAsset={workspace.uploadAsset}
-                onInsertAsset={workspace.insertAssetPath}
-              />
+              workspace.workspaceMode === 'draft' ? (
+                <DraftWorkspace
+                  node={workspace.selectedNode}
+                  formalStatus={workspace.formalContent.status}
+                  draftState={workspace.draftState}
+                  draftPresence={workspace.draftPresence}
+                  loading={workspace.contentLoading}
+                  error={workspace.contentError}
+                  draftInfo={workspace.draftInfo}
+                  isDirty={workspace.isDirty}
+                  isAutosaving={workspace.isAutosaving}
+                  lastDraftSavedAt={workspace.lastDraftSavedAt}
+                  autosaveError={workspace.autosaveError}
+                  assets={workspace.assets}
+                  assetsLoading={workspace.assetsLoading}
+                  actionMessage={workspace.actionMessage}
+                  onReloadDraft={workspace.resumeDraft}
+                  onBackToContent={() => workspace.setWorkspaceMode('formal')}
+                  onEditorChange={workspace.handleDraftEditorChange}
+                  onSaveDraft={workspace.saveDraft}
+                  onCommitDraft={workspace.commitDraft}
+                  onDiscardDraft={workspace.discardDraft}
+                  onUploadAsset={workspace.uploadAsset}
+                  onInsertAsset={workspace.insertAssetPath}
+                />
+              ) : (
+                <ContentVersionView
+                  node={workspace.selectedNode}
+                  content={workspace.formalContent}
+                  loading={workspace.contentLoading}
+                  error={workspace.contentError}
+                  history={workspace.history}
+                  historyLoading={workspace.historyLoading}
+                  assets={workspace.assets}
+                  assetsLoading={workspace.assetsLoading}
+                  draftPresence={workspace.draftPresence}
+                  actionMessage={workspace.actionMessage}
+                  onReload={() =>
+                    workspace.loadFormalContent(
+                      workspace.selectedNode!.contentItemId!,
+                    )
+                  }
+                  onPublish={workspace.publishContent}
+                  onUnpublish={workspace.unpublishContent}
+                  onCreateDraft={() =>
+                    workspace.createDraftFromFormalVersion(false)
+                  }
+                  onResumeDraft={workspace.resumeDraft}
+                  onOverwriteDraft={() =>
+                    workspace.createDraftFromFormalVersion(true)
+                  }
+                />
+              )
             ) : (
               <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 This DOC node has no content binding and should be recreated through the new flow.

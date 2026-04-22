@@ -1,15 +1,24 @@
 ﻿const BASE_URL = '/api/v1';
 
-export type ContentStatus = 'staged' | 'published' | 'archived';
+export type ContentStatus = 'committed' | 'published' | 'archived';
 export type ContentChangeType = 'patch' | 'major';
 export type ContentAssetType = 'image' | 'audio' | 'video' | 'file';
 export type ContentVisibility = 'public' | 'all';
 export type ContentSaveAction = 'commit' | 'publish' | 'unpublish';
 
+export interface ContentVersion {
+  commitHash: string;
+  title: string;
+  summary: string;
+}
+
 export interface ChangeLog {
-  at: string;
-  type: ContentChangeType;
-  note: string;
+  commitHash?: string;
+  title?: string;
+  summary?: string;
+  createdAt: string;
+  changeType: ContentChangeType;
+  changeNote: string;
 }
 
 export interface ContentAssetRef {
@@ -22,6 +31,11 @@ export interface ContentListItem {
   title: string;
   summary: string;
   status: ContentStatus;
+  latestVersion: ContentVersion;
+  publishedVersion?: ContentVersion | null;
+  latestCommitHash?: string;
+  publishedCommitHash?: string;
+  hasUnpublishedChanges: boolean;
   latestChange?: ChangeLog;
   createdAt: string;
   updatedAt: string;
@@ -32,6 +46,11 @@ export interface ContentDetail {
   title: string;
   summary: string;
   status: ContentStatus;
+  latestVersion: ContentVersion;
+  publishedVersion?: ContentVersion | null;
+  latestCommitHash?: string;
+  publishedCommitHash?: string;
+  hasUnpublishedChanges: boolean;
   bodyMarkdown: string;
   plainText: string;
   assetRefs: ContentAssetRef[];
@@ -92,6 +111,15 @@ export interface ListedAsset {
   fileName: string;
   type: ContentAssetType;
   size: number;
+}
+
+export interface ContentHistoryEntry {
+  commitHash: string;
+  committedAt: string;
+  authorName: string;
+  authorEmail: string;
+  message: string;
+  action: 'commit' | 'unknown';
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -159,6 +187,12 @@ export const contentItemsApi = {
       method: 'PUT',
       body: JSON.stringify(dto),
     }),
+  deleteDraft: (id: string) =>
+    request<void>(`/contents/${id}/draft`, {
+      method: 'DELETE',
+    }),
+  getHistory: (id: string) =>
+    request<ContentHistoryEntry[]>(`/contents/${id}/history`),
   listAssets: (id: string) => request<ListedAsset[]>(`/contents/${id}/assets`),
   uploadAsset: (id: string, file: File) => {
     const formData = new FormData();

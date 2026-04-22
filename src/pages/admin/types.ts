@@ -1,5 +1,17 @@
-import type { ContentChangeType, ContentStatus, ListedAsset } from '@/services/content-items';
-import type { CreateStructureNodeDto, StructureNode, UpdateStructureNodeDto } from '@/services/structure';
+import type {
+  ContentChangeType,
+  ContentDetail,
+  ContentVersion,
+  ContentHistoryEntry,
+  ContentStatus,
+  EditorDraft,
+  ListedAsset,
+} from '@/services/content-items';
+import type {
+  CreateStructureNodeDto,
+  StructureNode,
+  UpdateStructureNodeDto,
+} from '@/services/structure';
 
 export type TreeNode = StructureNode & {
   children?: TreeNode[];
@@ -16,13 +28,29 @@ export type ModalState = {
   parentId?: string;
 };
 
-export type EditorState = {
+export type WorkspaceMode = 'formal' | 'draft';
+
+export type FormalContentState = {
+  id: string;
+  status: ContentStatus;
+  latestVersion: ContentVersion;
+  publishedVersion: ContentVersion | null;
+  hasUnpublishedChanges: boolean;
+  bodyMarkdown: string;
+  updatedAt: string;
+};
+
+export type DraftEditorState = {
   title: string;
   summary: string;
-  status: ContentStatus;
   bodyMarkdown: string;
   changeNote: string;
   changeType: ContentChangeType;
+};
+
+export type DraftPresence = {
+  exists: boolean;
+  savedAt?: string;
 };
 
 export type DocCreateState = {
@@ -35,9 +63,30 @@ export type NodeSubmitPayload = {
   docCreate?: DocCreateState;
 };
 
-export type DocEditorPanelProps = {
+export type ContentVersionViewProps = {
   node: TreeNode;
-  editorState: EditorState;
+  content: FormalContentState;
+  loading: boolean;
+  error: string;
+  history: ContentHistoryEntry[];
+  historyLoading: boolean;
+  assets: ListedAsset[];
+  assetsLoading: boolean;
+  draftPresence: DraftPresence;
+  actionMessage: string;
+  onReload: () => Promise<void>;
+  onPublish: () => Promise<void>;
+  onUnpublish: () => Promise<void>;
+  onCreateDraft: () => Promise<void>;
+  onResumeDraft: () => Promise<void>;
+  onOverwriteDraft: () => Promise<void>;
+};
+
+export type DraftWorkspaceProps = {
+  node: TreeNode;
+  formalStatus: ContentStatus;
+  draftState: DraftEditorState;
+  draftPresence: DraftPresence;
   loading: boolean;
   error: string;
   draftInfo: string;
@@ -48,26 +97,83 @@ export type DocEditorPanelProps = {
   assets: ListedAsset[];
   assetsLoading: boolean;
   actionMessage: string;
-  onEditorChange: <K extends keyof EditorState>(key: K, value: EditorState[K]) => void;
-  onReload: () => Promise<void>;
+  onReloadDraft: () => Promise<void>;
+  onBackToContent: () => void;
+  onEditorChange: <K extends keyof DraftEditorState>(
+    key: K,
+    value: DraftEditorState[K],
+  ) => void;
   onSaveDraft: () => Promise<void>;
-  onCommitContent: () => Promise<void>;
-  onPublishContent: () => Promise<void>;
-  onUnpublishContent: () => Promise<void>;
+  onCommitDraft: () => Promise<void>;
+  onDiscardDraft: () => Promise<void>;
   onUploadAsset: (file: File) => Promise<void>;
   onInsertAsset: (path: string) => void;
 };
 
-export const EMPTY_EDITOR_STATE: EditorState = {
+export const EMPTY_FORMAL_CONTENT: FormalContentState = {
+  id: '',
+  status: 'committed',
+  latestVersion: {
+    commitHash: '',
+    title: '',
+    summary: '',
+  },
+  publishedVersion: null,
+  hasUnpublishedChanges: false,
+  bodyMarkdown: '',
+  updatedAt: '',
+};
+
+export const EMPTY_DRAFT_EDITOR_STATE: DraftEditorState = {
   title: '',
   summary: '',
-  status: 'staged',
   bodyMarkdown: '',
   changeNote: 'Update content',
   changeType: 'patch',
+};
+
+export const EMPTY_DRAFT_PRESENCE: DraftPresence = {
+  exists: false,
 };
 
 export const EMPTY_DOC_CREATE_STATE: DocCreateState = {
   title: '',
   summary: '',
 };
+
+export function toFormalContentState(detail: ContentDetail): FormalContentState {
+  return {
+    id: detail.id,
+    status: detail.status,
+    latestVersion: detail.latestVersion,
+    publishedVersion: detail.publishedVersion ?? null,
+    hasUnpublishedChanges: detail.hasUnpublishedChanges,
+    bodyMarkdown: detail.bodyMarkdown,
+    updatedAt: detail.updatedAt,
+  };
+}
+
+export function toDraftEditorStateFromDetail(
+  detail: ContentDetail,
+): DraftEditorState {
+  return {
+    title: detail.latestVersion.title,
+    summary: detail.latestVersion.summary,
+    bodyMarkdown: detail.bodyMarkdown,
+    changeNote: 'Update content',
+    changeType: 'patch',
+  };
+}
+
+export function toDraftEditorStateFromDraft(
+  draft: EditorDraft,
+  fallbackChangeType: ContentChangeType = 'patch',
+): DraftEditorState {
+  return {
+    title: draft.title,
+    summary: draft.summary,
+    bodyMarkdown: draft.bodyMarkdown,
+    changeNote: draft.changeNote,
+    changeType: fallbackChangeType,
+  };
+}

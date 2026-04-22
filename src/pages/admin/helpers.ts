@@ -1,5 +1,4 @@
-import type { ContentDetail } from '@/services/content-items';
-import type { EditorState, TreeNode } from './types';
+import type { TreeNode } from './types';
 
 export function formatDate(iso?: string) {
   if (!iso) return '--';
@@ -56,15 +55,4 @@ export function insertChildInTree(nodes: TreeNode[], parentId: string, child: Tr
 
 export function countNodes(nodes: TreeNode[]): number {
   return nodes.reduce((total, node) => total + 1 + countNodes(node.children ?? []), 0);
-}
-
-export function toEditorState(detail: ContentDetail): EditorState {
-  return {
-    title: detail.title,
-    summary: detail.summary,
-    status: detail.status,
-    bodyMarkdown: detail.bodyMarkdown,
-    changeNote: 'Update content',
-    changeType: 'patch',
-  };
 }

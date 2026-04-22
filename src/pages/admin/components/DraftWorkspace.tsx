@@ -1,29 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { ContentChangeType, ContentStatus } from '@/services/content-items';
 import { EditorShell } from './EditorShell';
 import { MarkdownEditorInput } from './MarkdownEditorInput';
-import type { DocEditorPanelProps } from '../types';
-
-const TypeBadge = ({ type }: { type: 'FOLDER' | 'DOC' }) => (
-  <span className="inline-flex items-center rounded border border-border bg-muted px-2 py-0.5 text-xs text-foreground">
-    {type === 'FOLDER' ? 'Folder' : 'Doc'}
-  </span>
-);
-
-const StatusBadge = ({ status }: { status: ContentStatus }) => {
-  const styles =
-    status === 'published'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : status === 'archived'
-        ? 'border-slate-300 bg-slate-100 text-slate-600'
-        : 'border-amber-200 bg-amber-50 text-amber-700';
-
-  return (
-    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs ${styles}`}>
-      {status}
-    </span>
-  );
-};
+import type { DraftWorkspaceProps } from '../types';
+import type { ContentChangeType } from '@/services/content-items';
 
 function insertAroundSelection(
   value: string,
@@ -47,7 +26,12 @@ function insertAroundSelection(
   };
 }
 
-function insertBlock(value: string, selectionStart: number, selectionEnd: number, block: string) {
+function insertBlock(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  block: string,
+) {
   const prefix = value.slice(0, selectionStart);
   const needsLeadingBreak = prefix.length > 0 && !prefix.endsWith('\n');
   const insertion = `${needsLeadingBreak ? '\n' : ''}${block}`;
@@ -60,9 +44,11 @@ function insertBlock(value: string, selectionStart: number, selectionEnd: number
   };
 }
 
-export const DocEditorPanel = ({
+export const DraftWorkspace = ({
   node,
-  editorState,
+  formalStatus,
+  draftState,
+  draftPresence,
   loading,
   error,
   draftInfo,
@@ -73,15 +59,15 @@ export const DocEditorPanel = ({
   assets,
   assetsLoading,
   actionMessage,
+  onReloadDraft,
+  onBackToContent,
   onEditorChange,
-  onReload,
   onSaveDraft,
-  onCommitContent,
-  onPublishContent,
-  onUnpublishContent,
+  onCommitDraft,
+  onDiscardDraft,
   onUploadAsset,
   onInsertAsset,
-}: DocEditorPanelProps) => {
+}: DraftWorkspaceProps) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -97,12 +83,12 @@ export const DocEditorPanel = ({
         return;
       }
 
-      void onCommitContent();
+      void onCommitDraft();
     };
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [onCommitContent, onSaveDraft]);
+  }, [onCommitDraft, onSaveDraft]);
 
   const focusTextarea = (selectionStart?: number, selectionEnd?: number) => {
     window.requestAnimationFrame(() => {
@@ -124,30 +110,12 @@ export const DocEditorPanel = ({
     event.target.value = '';
   };
 
-  const handlePublish = async () => {
-    const confirmed = window.confirm(
-      'Publish this document now? It will become visible on public pages.',
-    );
-    if (!confirmed) return;
-
-    await onPublishContent();
-  };
-
-  const handleUnpublish = async () => {
-    const confirmed = window.confirm(
-      'Move this document back to staged? It will be removed from public pages.',
-    );
-    if (!confirmed) return;
-
-    await onUnpublishContent();
-  };
-
   const applyInlineInsertion = (before: string, after = '') => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const result = insertAroundSelection(
-      editorState.bodyMarkdown,
+      draftState.bodyMarkdown,
       textarea.selectionStart,
       textarea.selectionEnd,
       before,
@@ -163,7 +131,7 @@ export const DocEditorPanel = ({
     if (!textarea) return;
 
     const result = insertBlock(
-      editorState.bodyMarkdown,
+      draftState.bodyMarkdown,
       textarea.selectionStart,
       textarea.selectionEnd,
       block,
@@ -173,33 +141,38 @@ export const DocEditorPanel = ({
     focusTextarea(result.nextSelectionStart, result.nextSelectionEnd);
   };
 
+  const handleDiscardDraft = async () => {
+    const confirmed = window.confirm(
+      'Discard the current draft and return to the formal content view?',
+    );
+    if (!confirmed) return;
+    await onDiscardDraft();
+  };
+
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-slate-900">{node.name}</h2>
-            <TypeBadge type={node.type} />
-            <StatusBadge status={editorState.status} />
-          </div>
+          <h2 className="text-xl font-semibold text-slate-900">{node.name}</h2>
           <p className="mt-1 text-sm text-slate-500">
-            content id: {node.contentItemId ?? '--'}
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            `Save Draft` stores temporary editor work. `Commit` writes a formal
-            <span className="font-medium text-slate-600"> staged</span> version.
-            `Publish` makes it public. `Unpublish` moves it back to
-            <span className="font-medium text-slate-600"> staged</span>.
+            Draft workspace based on the current {formalStatus} formal version.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => void onReload()}
+            onClick={() => void onBackToContent()}
             className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
           >
-            Reload
+            Back to Content
+          </button>
+          <button
+            type="button"
+            onClick={() => void onReloadDraft()}
+            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
+          >
+            Reload Draft
           </button>
           <button
             type="button"
@@ -210,34 +183,24 @@ export const DocEditorPanel = ({
           </button>
           <button
             type="button"
-            onClick={() => void onCommitContent()}
-            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            onClick={() => void onCommitDraft()}
+            className="rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
           >
             Commit
           </button>
-          {editorState.status === 'published' ? (
-            <button
-              type="button"
-              onClick={() => void handleUnpublish()}
-              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-            >
-              Unpublish
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handlePublish()}
-              className="rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
-            >
-              Publish
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => void handleDiscardDraft()}
+            className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            Discard Draft
+          </button>
         </div>
       </div>
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
-          Loading content...
+          Loading draft workspace...
         </div>
       ) : error ? (
         <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -257,7 +220,7 @@ export const DocEditorPanel = ({
                   {isAutosaving
                     ? 'Autosaving...'
                     : isDirty
-                      ? 'Unsaved changes'
+                      ? 'Unsaved draft changes'
                       : 'Draft synced'}
                 </span>
                 {lastDraftSavedAt && (
@@ -266,7 +229,9 @@ export const DocEditorPanel = ({
                     {new Date(lastDraftSavedAt).toLocaleString('zh-CN')}
                   </span>
                 )}
-                <span>Shortcut: Ctrl/Cmd + S commit, Ctrl/Cmd + Shift + S save draft</span>
+                <span>
+                  Shortcut: Ctrl/Cmd + S commit, Ctrl/Cmd + Shift + S save draft
+                </span>
               </div>
               {autosaveError && <p className="mt-2 text-red-600">{autosaveError}</p>}
             </div>
@@ -281,9 +246,19 @@ export const DocEditorPanel = ({
             sidePanel={
               <>
                 <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Draft Status</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {draftPresence.exists
+                      ? 'An editor draft already exists for this content item.'
+                      : 'This draft workspace has not been persisted yet.'}
+                  </p>
+                </div>
+
+                <div>
                   <h3 className="text-sm font-semibold text-slate-900">Assets</h3>
                   <p className="mt-1 text-xs text-slate-500">
-                    Uploaded files return a stable path under ./assets/.
+                    Draft assets are written into the same content directory and can be inserted
+                    into Markdown paths under ./assets/.
                   </p>
                 </div>
 
@@ -316,7 +291,7 @@ export const DocEditorPanel = ({
                               {asset.path}
                             </p>
                             <p className="mt-1 text-xs text-slate-400">
-                              {asset.type} 路 {asset.size} bytes
+                              {asset.type} · {asset.size} bytes
                             </p>
                           </div>
                           <button
@@ -344,45 +319,8 @@ export const DocEditorPanel = ({
                 </label>
                 <input
                   type="text"
-                  value={editorState.title}
+                  value={draftState.title}
                   onChange={(event) => onEditorChange('title', event.target.value)}
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Lifecycle
-                </label>
-                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                  {editorState.status}
-                </div>
-                <p className="mt-1 text-xs text-slate-400">
-                  `staged` means committed but not public yet. `published` is visible
-                  to public pages. `archived` is retained but taken offline.
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Summary
-              </label>
-              <textarea
-                value={editorState.summary}
-                onChange={(event) => onEditorChange('summary', event.target.value)}
-                className="min-h-28 w-full rounded border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Change Note
-                </label>
-                <input
-                  type="text"
-                  value={editorState.changeNote}
-                  onChange={(event) => onEditorChange('changeNote', event.target.value)}
                   className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>
@@ -391,7 +329,7 @@ export const DocEditorPanel = ({
                   Change Type
                 </label>
                 <select
-                  value={editorState.changeType}
+                  value={draftState.changeType}
                   onChange={(event) =>
                     onEditorChange(
                       'changeType',
@@ -404,6 +342,29 @@ export const DocEditorPanel = ({
                   <option value="major">major</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Summary
+              </label>
+              <textarea
+                value={draftState.summary}
+                onChange={(event) => onEditorChange('summary', event.target.value)}
+                className="min-h-28 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Change Note
+              </label>
+              <input
+                type="text"
+                value={draftState.changeNote}
+                onChange={(event) => onEditorChange('changeNote', event.target.value)}
+                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              />
             </div>
 
             <div>
@@ -464,12 +425,12 @@ export const DocEditorPanel = ({
                   Markdown Body
                 </label>
                 <span className="text-xs text-slate-400">
-                  {editorState.bodyMarkdown.length} chars
+                  {draftState.bodyMarkdown.length} chars
                 </span>
               </div>
               <MarkdownEditorInput
                 ref={textareaRef}
-                value={editorState.bodyMarkdown}
+                value={draftState.bodyMarkdown}
                 onChange={(value) => onEditorChange('bodyMarkdown', value)}
               />
             </div>
