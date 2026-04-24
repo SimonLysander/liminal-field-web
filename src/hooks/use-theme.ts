@@ -1,26 +1,26 @@
 import { useCallback, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'daylight' | 'midnight';
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof document === 'undefined') return 'light';
+    if (typeof document === 'undefined') return 'daylight';
     try {
       const stored = localStorage.getItem('liminal-theme');
-      if (stored === 'dark' || stored === 'light') {
-        document.documentElement.classList.toggle('dark', stored === 'dark');
+      if (stored === 'daylight' || stored === 'midnight') {
+        document.body.setAttribute('data-theme', stored);
         return stored;
       }
     } catch {
       /* ignore */
     }
 
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    return (document.body.getAttribute('data-theme') as Theme) || 'daylight';
   });
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
+    document.body.setAttribute('data-theme', next);
     try {
       localStorage.setItem('liminal-theme', next);
     } catch {

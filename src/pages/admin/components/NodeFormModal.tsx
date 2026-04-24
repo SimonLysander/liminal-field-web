@@ -73,94 +73,75 @@ export const NodeFormModal = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-      onClick={(event) => event.target === event.currentTarget && onClose()}
-    >
-      <div className="mx-4 w-full max-w-lg rounded border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {isCreate ? 'Create node' : 'Edit node'}
-          </h2>
-        </div>
+    <div className="admin-overlay" onClick={(event) => event.target === event.currentTarget && onClose()}>
+      <div className="admin-modal-card">
+        <div className="panel-label">{isCreate ? 'Create Node' : 'Edit Node'}</div>
+        <h2 className="page-title">{isCreate ? 'Archive a new structure node' : 'Update node metadata'}</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Node name</label>
+        <form onSubmit={handleSubmit} className="admin-form-stack">
+          <label className="admin-field">
+            <span className="admin-meta-label">Node name</span>
             <input
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              className="admin-input"
               placeholder="Example: World Building"
             />
-          </div>
+          </label>
 
-          {isCreate && (
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Node type</label>
-              <div className="grid grid-cols-2 gap-2">
+          {isCreate ? (
+            <div className="admin-field">
+              <span className="admin-meta-label">Node type</span>
+              <div className="admin-toggle-row">
                 {(['FOLDER', 'DOC'] as StructureNodeType[]).map((candidate) => (
                   <button
                     key={candidate}
                     type="button"
                     onClick={() => setType(candidate)}
-                    className={`rounded border px-3 py-2 text-sm ${
-                      type === candidate
-                        ? 'border-slate-800 bg-slate-900 text-white'
-                        : 'border-slate-300 text-slate-700'
-                    }`}
+                    className={`admin-toggle${type === candidate ? ' active' : ''}`}
                   >
                     {candidate}
                   </button>
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
-          {needsDocFields && (
-            <div className="space-y-4 rounded border border-slate-200 bg-slate-50 p-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">Content title</label>
-                <input
-                  type="text"
-                  value={docCreate.title}
-                  onChange={(event) =>
-                    setDocCreate((current) => ({ ...current, title: event.target.value }))
-                  }
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="Used when creating the content item"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">Content summary</label>
-                <textarea
-                  value={docCreate.summary}
-                  onChange={(event) =>
-                    setDocCreate((current) => ({ ...current, summary: event.target.value }))
-                  }
-                  className="min-h-24 w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="DOC nodes must be created with a content item."
-                />
+          {needsDocFields ? (
+            <div className="admin-detail-card">
+              <div className="panel-label">Initial Content</div>
+              <div className="admin-form-stack compact">
+                <label className="admin-field">
+                  <span className="admin-meta-label">Content title</span>
+                  <input
+                    type="text"
+                    value={docCreate.title}
+                    onChange={(event) => setDocCreate((current) => ({ ...current, title: event.target.value }))}
+                    className="admin-input"
+                    placeholder="Used for the initial formal version"
+                  />
+                </label>
+                <label className="admin-field">
+                  <span className="admin-meta-label">Content summary</span>
+                  <textarea
+                    value={docCreate.summary}
+                    onChange={(event) => setDocCreate((current) => ({ ...current, summary: event.target.value }))}
+                    className="admin-textarea"
+                    placeholder="DOC nodes are created with a bound content item."
+                  />
+                </label>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error ? <p className="admin-error-copy">{error}</p> : null}
 
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700"
-            >
+          <div className="admin-action-row is-end">
+            <button type="button" className="admin-button" onClick={onClose}>
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded border border-slate-800 bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-            >
+            <button type="submit" disabled={submitting} className="admin-button admin-button-primary">
               {submitting ? 'Submitting...' : isCreate ? 'Create' : 'Save'}
             </button>
           </div>

@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock3, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  contentItemsApi,
-  type ContentDetail,
-  type ContentListItem,
-} from '@/services/content-items';
+import { contentItemsApi, type ContentDetail, type ContentListItem } from '@/services/content-items';
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleString('zh-CN', {
@@ -21,7 +14,6 @@ const GalleryPage = () => {
   const [items, setItems] = useState<ContentListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeDetail, setActiveDetail] = useState<ContentDetail | null>(null);
-  const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +24,6 @@ const GalleryPage = () => {
     const loadItems = async () => {
       setIsLoading(true);
       setError(null);
-
       try {
         const result = await contentItemsApi.list();
         if (!isCancelled) {
@@ -46,34 +37,15 @@ const GalleryPage = () => {
           setError(loadError instanceof Error ? loadError.message : 'Failed to load gallery.');
         }
       } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        if (!isCancelled) setIsLoading(false);
       }
     };
 
     void loadItems();
-
     return () => {
       isCancelled = true;
     };
   }, []);
-
-  const filteredItems = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return items;
-
-    return items.filter((item) => `${item.title}\n${item.summary}`.toLowerCase().includes(keyword));
-  }, [items, query]);
-
-  useEffect(() => {
-    const nextActiveId =
-      filteredItems.find((item) => item.id === activeId)?.id ?? filteredItems[0]?.id ?? null;
-
-    if (nextActiveId !== activeId) {
-      setActiveId(nextActiveId);
-    }
-  }, [activeId, filteredItems]);
 
   useEffect(() => {
     if (!activeId) {
@@ -85,148 +57,147 @@ const GalleryPage = () => {
 
     const loadDetail = async () => {
       setIsDetailLoading(true);
-
       try {
         const detail = await contentItemsApi.getById(activeId);
-        if (!isCancelled) {
-          setActiveDetail(detail);
-        }
+        if (!isCancelled) setActiveDetail(detail);
       } catch (loadError) {
         if (!isCancelled) {
           setActiveDetail(null);
           setError(loadError instanceof Error ? loadError.message : 'Failed to load content detail.');
         }
       } finally {
-        if (!isCancelled) {
-          setIsDetailLoading(false);
-        }
+        if (!isCancelled) setIsDetailLoading(false);
       }
     };
 
     void loadDetail();
-
     return () => {
       isCancelled = true;
     };
   }, [activeId]);
 
-  const timelineItems = useMemo(
-    () =>
-      filteredItems.map((item) => ({
-        id: item.id,
-        label: formatDate(item.updatedAt).slice(0, 10),
-      })),
-    [filteredItems],
-  );
+  const tagGroups = useMemo(() => {
+    const latestTitles = items.slice(0, 5).map((item, index) => ({ name: item.title, count: index + 1, active: item.id === activeId }));
+    const statuses = [
+      { name: 'published', count: items.filter((item) => item.status === 'published').length, active: !!activeDetail?.publishedVersion },
+      { name: 'committed', count: items.filter((item) => item.status === 'committed').length, active: activeDetail?.status === 'committed' },
+    ];
+    const assets = [
+      { name: 'with assets', count: items.filter((item) => item.latestChange?.changeType === 'major').length || 0, active: false },
+      { name: 'latest', count: items.length, active: false },
+    ];
+
+    return [
+      { label: 'Document', tags: latestTitles },
+      { label: 'Status', tags: statuses },
+      { label: 'Archive', tags: assets },
+    ];
+  }, [activeDetail?.publishedVersion, activeDetail?.status, activeId, items]);
+
+  const timeline = useMemo(() => {
+    const groups = new Map<string, { name: string; count: number; active: boolean }[]>();
+    items.forEach((item) => {
+      const date = new Date(item.updatedAt);
+      const year = String(date.getFullYear());
+      const month = `${date.getMonth() + 1}ÔÂ`;
+      const current = groups.get(year) ?? [];
+      current.push({ name: month, count: 1, active: item.id === activeId });
+      groups.set(year, current);
+    });
+    return [...groups.entries()].map(([year, months]) => ({ year, months }));
+  }, [activeId, items]);
+
+  const navigate = (dir: -1 | 1) => {
+    if (items.length === 0) return;
+    const index = items.findIndex((item) => item.id === activeId);
+    const next = dir > 0 ? (index >= items.length - 1 ? 0 : index + 1) : index <= 0 ? items.length - 1 : index - 1;
+    setActiveId(items[next]?.id ?? null);
+  };
+
+  const detailTitle = activeDetail ? activeDetail.publishedVersion?.title ?? activeDetail.latestVersion.title : null;
+  const detailSummary = activeDetail
+    ? (activeDetail.publishedVersion?.summary ?? activeDetail.latestVersion.summary) || 'No summary yet.'
+    : null;
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-border px-4 py-3">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search title or summary..."
-            className="h-8 pl-8 text-sm"
-          />
+    <div className="gallery-view flex h-full flex-1 gap-[1.25rem] overflow-hidden px-[1.5rem] pb-[1.5rem] pt-[1rem]">
+      <div className="gallery-left flex w-[15.5rem] shrink-0 flex-col rounded-[1.125rem] px-[1.25rem] py-[1.125rem]">
+        <div className="panel-label">Tag Filter</div>
+        <div className="mt-[0.75rem] flex flex-col gap-[0.875rem]">
+          {tagGroups.map((group) => (
+            <div key={group.label}>
+              <div className="tag-group-label">{group.label}</div>
+              <div className="tag-group mt-[0.375rem]">
+                {group.tags.map((tag) => (
+                  <span key={`${group.label}-${tag.name}`} className={`tag-item ${tag.active ? 'active' : ''}`}>
+                    {tag.name} <span className="tag-num">{tag.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
+        {isLoading ? <div className="ai-hint mt-[1rem]">Loading gallery¡­</div> : null}
+        {error ? <div className="ai-hint mt-[1rem]">{error}</div> : null}
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="w-72 shrink-0 border-r border-border">
-          <ScrollArea className="h-full">
-            <div className="space-y-2 p-3">
-              <div className="text-xs text-muted-foreground">Content Sequence</div>
-              {isLoading ? (
-                <p className="py-6 text-sm text-muted-foreground">Loading...</p>
-              ) : error ? (
-                <p className="py-6 text-sm text-destructive">{error}</p>
-              ) : filteredItems.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">No content found.</p>
-              ) : (
-                filteredItems.map((item) => {
-                  const isActive = activeDetail?.id === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveId(item.id)}
-                      className={`w-full rounded-md border px-3 py-3 text-left transition-colors ${
-                        isActive ? 'border-border bg-accent' : 'border-border hover:bg-accent/50'
-                      }`}
-                    >
-                      <div className="line-clamp-1 text-sm font-medium">{item.title}</div>
-                      <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {item.summary}
-                      </div>
-                      <div className="mt-2 text-[11px] text-muted-foreground">{formatDate(item.updatedAt)}</div>
-                    </button>
-                  );
-                })
-              )}
+      <div className="gallery-center flex min-w-0 flex-1 flex-col items-center gap-[1rem] rounded-[1.375rem] px-[1.5rem] py-[1.25rem]">
+        {isDetailLoading ? (
+          <div className="gallery-polaroid">
+            <div className="gallery-display">
+              <div className="gallery-display-placeholder">Loading¡­</div>
             </div>
-          </ScrollArea>
-        </aside>
-
-        <main className="min-w-0 flex-1">
-          <ScrollArea className="h-full">
-            <div className="space-y-4 p-6">
-              {isDetailLoading ? (
-                <div className="p-6 text-sm text-muted-foreground">Loading detail...</div>
-              ) : activeDetail ? (
-                <>
-                  <div className="border border-border p-4">
-                    <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      <span>{formatDate(activeDetail.updatedAt)}</span>
-                      <span>|</span>
-                      <span>{activeDetail.status}</span>
-                    </div>
-                    <div className="flex aspect-[16/9] items-center justify-center border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
-                      gallery visual area
-                    </div>
-                  </div>
-
-                  <section className="border border-border p-6">
-                    <h1 className="text-xl font-semibold">{activeDetail.title}</h1>
-                    <p className="mt-3 text-sm text-muted-foreground">{activeDetail.summary}</p>
-                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7">{activeDetail.bodyMarkdown}</div>
-                  </section>
-                </>
-              ) : (
-                <div className="p-6 text-sm text-muted-foreground">Select one item to inspect it.</div>
-              )}
+            <div className="gallery-polaroid-caption">Loading detail</div>
+          </div>
+        ) : activeDetail ? (
+          <>
+            <div className="gallery-polaroid">
+              <div className="gallery-display">
+                <div className="gallery-display-placeholder">{detailTitle}</div>
+                <div className="gallery-nav prev" onClick={() => navigate(-1)}>
+                  ¡÷
+                </div>
+                <div className="gallery-nav next" onClick={() => navigate(1)}>
+                  ¨Œ
+                </div>
+              </div>
+              <div className="gallery-polaroid-caption">{detailTitle}</div>
             </div>
-          </ScrollArea>
-        </main>
-
-        <aside className="w-52 shrink-0 border-l border-border">
-          <ScrollArea className="h-full">
-            <div className="space-y-2 p-3">
-              <div className="text-xs text-muted-foreground">Time Index</div>
-              {timelineItems.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">No timeline yet.</p>
-              ) : (
-                timelineItems.map((item) => {
-                  const isActive = item.id === activeDetail?.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveId(item.id)}
-                      className={`block w-full rounded-md border border-transparent px-3 py-2 text-left text-sm transition-colors ${
-                        isActive ? 'border-border bg-accent' : 'hover:bg-accent/50'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })
-              )}
+            <div className="gallery-info w-full max-w-[32rem]">
+              <div className="gallery-info-meta">
+                <span>{formatDate(activeDetail.updatedAt)}</span>
+                <span>{activeDetail.status}</span>
+                <span>{activeDetail.assetRefs.length} assets</span>
+              </div>
+              <div className="gallery-info-desc">{detailSummary}</div>
             </div>
-          </ScrollArea>
-        </aside>
+          </>
+        ) : (
+          <div className="gallery-polaroid">
+            <div className="gallery-display">
+              <div className="gallery-display-placeholder">Select a gallery item</div>
+            </div>
+            <div className="gallery-polaroid-caption">No active item</div>
+          </div>
+        )}
+      </div>
+
+      <div className="gallery-right flex w-[11rem] shrink-0 flex-col rounded-[1.125rem] px-[1.25rem] py-[1.125rem]">
+        <div className="panel-label">Timeline</div>
+        <div className="timeline-track mt-[0.75rem] flex-1">
+          {timeline.map((group) => (
+            <div key={group.year}>
+              <div className="timeline-year">{group.year}</div>
+              {group.months.map((month, index) => (
+                <div key={`${group.year}-${month.name}-${index}`} className={`tl-entry ${month.active ? 'active' : ''}`}>
+                  <span className="tl-dot" />
+                  {month.name}
+                  <span className="tl-count">{month.count}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

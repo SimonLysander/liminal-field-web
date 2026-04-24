@@ -15,20 +15,11 @@ function getReadableHistoryTitle(message: string, action: string) {
   return 'Formal version update';
 }
 
-const StatusBadge = ({ status }: { status: ContentStatus }) => {
-  const styles =
-    status === 'published'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : 'border-amber-200 bg-amber-50 text-amber-700';
-
-  return (
-    <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-xs ${styles}`}
-    >
-      {status}
-    </span>
-  );
-};
+const StatusBadge = ({ status }: { status: ContentStatus }) => (
+  <span className={`admin-pill ${status === 'published' ? 'is-published' : 'is-committed'}`}>
+    {status}
+  </span>
+);
 
 export const ContentVersionView = ({
   node,
@@ -70,55 +61,41 @@ export const ContentVersionView = ({
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+    <div className="admin-stack-gap">
+      <div className="admin-section-heading admin-section-row">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-slate-900">{node.name}</h2>
+          <div className="panel-label">Formal Version View</div>
+          <div className="admin-heading-line">
+            <h2 className="page-title">{node.name}</h2>
             <StatusBadge status={content.status} />
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Formal content view. Select draft actions on the right to start editing.
+          <p className="admin-copy">
+            Formal versions are read-only here. Drafts are created in a separate workspace.
           </p>
-          {content.status === 'published' && content.hasUnpublishedChanges && (
-            <p className="mt-1 text-xs text-amber-600">
-              A newer committed version exists. The public page is still serving
-              commit {publishedVersion?.commitHash.slice(0, 8) ?? '--'}.
+          {content.status === 'published' && content.hasUnpublishedChanges ? (
+            <p className="admin-warning-copy">
+              A newer committed version exists. Public pages still serve {publishedVersion?.commitHash.slice(0, 8) ?? '--'}.
             </p>
-          )}
+          ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void onReload()}
-            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
-          >
+        <div className="admin-action-row">
+          <button type="button" className="admin-button" onClick={() => void onReload()}>
             Reload
           </button>
-          {content.status === 'published' && content.hasUnpublishedChanges && (
-            <button
-              type="button"
-              onClick={() => void handlePublish()}
-              className="rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
-            >
-              Publish Latest
-            </button>
-          )}
           {content.status === 'published' ? (
-            <button
-              type="button"
-              onClick={() => void handleUnpublish()}
-              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-            >
-              Unpublish
-            </button>
+            <>
+              {content.hasUnpublishedChanges ? (
+                <button type="button" className="admin-button admin-button-primary" onClick={() => void handlePublish()}>
+                  Publish Latest
+                </button>
+              ) : null}
+              <button type="button" className="admin-button admin-button-danger" onClick={() => void handleUnpublish()}>
+                Unpublish
+              </button>
+            </>
           ) : (
-            <button
-              type="button"
-              onClick={() => void handlePublish()}
-              className="rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
-            >
+            <button type="button" className="admin-button admin-button-primary" onClick={() => void handlePublish()}>
               Publish
             </button>
           )}
@@ -126,213 +103,135 @@ export const ContentVersionView = ({
       </div>
 
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
-          Loading content...
-        </div>
+        <div className="admin-empty-state">Loading content...</div>
       ) : error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="admin-inline-error">{error}</div>
       ) : (
         <>
-          {actionMessage && (
-            <div className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {actionMessage}
-            </div>
-          )}
+          {actionMessage ? <div className="admin-inline-success">{actionMessage}</div> : null}
 
           <EditorShell
             sidePanel={
               <>
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Draft Workspace</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Editing happens in a separate draft workspace. The formal content view stays
-                    read-only.
+                <section className="admin-side-section">
+                  <div className="panel-label">Draft Workspace</div>
+                  <p className="admin-copy">
+                    Formal content stays locked here. Editing only begins after you create or resume a draft.
                   </p>
-                </div>
 
-                {draftPresence.exists ? (
-                  <div className="space-y-2 rounded border border-amber-200 bg-amber-50 p-3">
-                    <p className="text-sm text-amber-900">
-                      Existing draft found
-                    </p>
-                    <p className="text-xs text-amber-700">
-                      Last saved:{' '}
-                      {draftPresence.savedAt
-                        ? new Date(draftPresence.savedAt).toLocaleString('zh-CN')
-                        : '--'}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => void onResumeDraft()}
-                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                    >
-                      Resume Draft
+                  {draftPresence.exists ? (
+                    <div className="admin-note-card">
+                      <div className="admin-note-line">
+                        <span>Existing draft</span>
+                        <strong>yes</strong>
+                      </div>
+                      <div className="admin-note-line is-wrap">
+                        <span>Last saved</span>
+                        <strong>
+                          {draftPresence.savedAt ? new Date(draftPresence.savedAt).toLocaleString('zh-CN') : '--'}
+                        </strong>
+                      </div>
+                      <div className="admin-side-actions">
+                        <button type="button" className="admin-button" onClick={() => void onResumeDraft()}>
+                          Resume Draft
+                        </button>
+                        <button type="button" className="admin-button admin-button-danger" onClick={() => void onOverwriteDraft()}>
+                          Overwrite Draft
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" className="admin-button admin-button-primary" onClick={() => void onCreateDraft()}>
+                      Create Draft
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void onOverwriteDraft()}
-                      className="w-full rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-                    >
-                      Overwrite Draft
-                    </button>
+                  )}
+                </section>
+
+                <section className="admin-side-section">
+                  <div className="panel-label">Assets</div>
+                  <div className="admin-side-list">
+                    {assetsLoading ? (
+                      <div className="admin-empty-state compact">Loading assets...</div>
+                    ) : assets.length === 0 ? (
+                      <div className="admin-empty-state compact">No assets yet.</div>
+                    ) : (
+                      assets.map((asset) => (
+                        <div key={asset.path} className="admin-side-card">
+                          <div className="admin-side-title">{asset.fileName}</div>
+                          <div className="admin-side-mono">{asset.path}</div>
+                          <div className="admin-side-caption">
+                            {asset.type} ¡¤ {asset.size} bytes
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void onCreateDraft()}
-                    className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    Create Draft
-                  </button>
-                )}
+                </section>
 
-                <div className="pt-2">
-                  <h3 className="text-sm font-semibold text-slate-900">Assets</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Assets referenced by the current formal version.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  {assetsLoading ? (
-                    <p className="text-sm text-slate-400">Loading assets...</p>
-                  ) : assets.length === 0 ? (
-                    <p className="text-sm text-slate-400">No assets yet.</p>
-                  ) : (
-                    assets.map((asset) => (
-                      <div
-                        key={asset.path}
-                        className="rounded border border-slate-200 bg-white p-3"
-                      >
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {asset.fileName}
-                        </p>
-                        <p className="mt-1 break-all font-mono text-xs text-slate-500">
-                          {asset.path}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {asset.type} Â· {asset.size} bytes
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="pt-2">
-                  <h3 className="text-sm font-semibold text-slate-900">History</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Read-only formal version history from the knowledge-base repo.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  {historyLoading ? (
-                    <p className="text-sm text-slate-400">Loading history...</p>
-                  ) : history.length === 0 ? (
-                    <p className="text-sm text-slate-400">
-                      No formal versions yet. Create or commit content first.
-                    </p>
-                  ) : (
-                    history.map((entry) => (
-                      <div
-                        key={entry.commitHash}
-                        className="rounded border border-slate-200 bg-white p-3"
-                      >
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {getReadableHistoryTitle(entry.message, entry.action)}
-                        </p>
-                        <p className="mt-1 text-xs uppercase tracking-wide text-slate-400">
-                          {entry.action}
-                        </p>
-                        <p className="mt-1 font-mono text-xs text-slate-500">
-                          {entry.commitHash.slice(0, 8)}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {new Date(entry.committedAt).toLocaleString('zh-CN')}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {entry.authorName} Â· {entry.authorEmail}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <section className="admin-side-section">
+                  <div className="panel-label">History</div>
+                  <p className="admin-copy">Read-only formal version history from the knowledge-base repo.</p>
+                  <div className="admin-side-list">
+                    {historyLoading ? (
+                      <div className="admin-empty-state compact">Loading history...</div>
+                    ) : history.length === 0 ? (
+                      <div className="admin-empty-state compact">No formal versions yet.</div>
+                    ) : (
+                      history.map((entry) => (
+                        <div key={entry.commitHash} className="admin-history-card">
+                          <div className="admin-side-title">{getReadableHistoryTitle(entry.message, entry.action)}</div>
+                          <div className="admin-side-caption uppercase">{entry.action}</div>
+                          <div className="admin-side-mono">{entry.commitHash.slice(0, 8)}</div>
+                          <div className="admin-side-caption">{new Date(entry.committedAt).toLocaleString('zh-CN')}</div>
+                          <div className="admin-side-caption">{entry.authorName} ¡¤ {entry.authorEmail}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
               </>
             }
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-slate-700">Title</p>
-                <div className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
-                  {latestVersion.title || '--'}
-                </div>
+            <div className="admin-meta-grid">
+              <div className="admin-meta-card">
+                <div className="admin-meta-label">Latest Commit</div>
+                <div className="admin-mono">{latestVersion.commitHash.slice(0, 8) || '--'}</div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-slate-700">Status</p>
-                <div className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
-                  {content.status}
-                </div>
+              <div className="admin-meta-card">
+                <div className="admin-meta-label">Published Commit</div>
+                <div className="admin-mono">{publishedVersion?.commitHash.slice(0, 8) ?? '--'}</div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-slate-700">Latest Commit</p>
-                <div className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-800">
-                  {latestVersion.commitHash.slice(0, 8) || '--'}
-                </div>
+            <div className="admin-meta-grid">
+              <div className="admin-meta-card">
+                <div className="admin-meta-label">Latest Version Title</div>
+                <div>{latestVersion.title || '--'}</div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-slate-700">Published Commit</p>
-                <div className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-800">
-                  {publishedVersion?.commitHash.slice(0, 8) ?? '--'}
-                </div>
+              <div className="admin-meta-card">
+                <div className="admin-meta-label">Published Version Title</div>
+                <div>{publishedVersion?.title || '--'}</div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-slate-700">Latest Version Title</p>
-                <div className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
-                  {latestVersion.title || '--'}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-700">Published Version Title</p>
-                <div className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
-                  {publishedVersion?.title || '--'}
-                </div>
-              </div>
+            <div className="admin-detail-card">
+              <div className="admin-meta-label">Latest Version Summary</div>
+              <p className="admin-detail-copy">{latestVersion.summary || '--'}</p>
             </div>
 
-            <div>
-              <p className="text-sm font-medium text-slate-700">Latest Version Summary</p>
-              <div className="mt-1 min-h-24 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap">
-                {latestVersion.summary || '--'}
+            {publishedVersion ? (
+              <div className="admin-detail-card">
+                <div className="admin-meta-label">Published Version Summary</div>
+                <p className="admin-detail-copy">{publishedVersion.summary || '--'}</p>
               </div>
-            </div>
+            ) : null}
 
-            {publishedVersion && (
-              <div>
-                <p className="text-sm font-medium text-slate-700">Published Version Summary</p>
-                <div className="mt-1 min-h-24 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap">
-                  {publishedVersion.summary || '--'}
-                </div>
+            <div className="admin-detail-card is-body">
+              <div className="admin-detail-header">
+                <div className="admin-meta-label">Markdown Body</div>
+                <div className="admin-side-caption">Updated {new Date(content.updatedAt).toLocaleString('zh-CN')}</div>
               </div>
-            )}
-
-            <div>
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-slate-700">Markdown Body</p>
-                <span className="text-xs text-slate-400">
-                  Updated {new Date(content.updatedAt).toLocaleString('zh-CN')}
-                </span>
-              </div>
-              <pre className="min-h-[520px] whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 px-3 py-3 font-mono text-sm leading-6 text-slate-700">
-                {content.bodyMarkdown || '--'}
-              </pre>
+              <pre className="admin-markdown-preview">{content.bodyMarkdown || '--'}</pre>
             </div>
           </EditorShell>
         </>

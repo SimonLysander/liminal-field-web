@@ -13,7 +13,7 @@ export const MarkdownEditorInput = forwardRef<
     value={value}
     disabled={disabled}
     onChange={(event) => onChange(event.target.value)}
-    className="min-h-[520px] w-full rounded border border-slate-300 px-3 py-3 font-mono text-sm leading-6 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+    className="admin-markdown-input"
     spellCheck={false}
   />
 ));

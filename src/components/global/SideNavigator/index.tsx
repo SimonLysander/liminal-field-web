@@ -1,36 +1,30 @@
-import { Bot, GalleryHorizontalEnd, Home, NotebookPen } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 
-const navItems = [
-  { to: '/home', label: 'Home', icon: Home },
-  { to: '/note', label: 'Notes', icon: NotebookPen },
-  { to: '/gallery', label: 'Gallery', icon: GalleryHorizontalEnd },
-  { to: '/agent', label: 'Agent', icon: Bot },
+const spaces = [
+  { to: '/home', label: 'Home' },
+  { to: '/note', label: 'Notes' },
+  { to: '/gallery', label: 'Gallery' },
+  { to: '/agent', label: 'Agent' },
 ];
 
-const SideNavigator = () => {
+export default function SideNavigator() {
   return (
-    <nav className="flex flex-col items-center gap-1 px-2 py-4">
-      {navItems.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          className={({ isActive }) =>
-            cn(
-              'flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-md border border-transparent text-muted-foreground transition-colors',
-              isActive
-                ? 'border-border bg-accent text-foreground'
-                : 'hover:bg-accent/50 hover:text-foreground',
-            )
-          }
-        >
-          <Icon className="h-5 w-5" />
-          <span className="text-[10px] leading-none">{label}</span>
-        </NavLink>
-      ))}
-    </nav>
+    <div className="sidebar-wrapper w-[3rem] shrink-0">
+      <aside className="sidebar flex h-full w-[3rem] flex-col justify-center overflow-hidden">
+        <nav className="nav-rail flex flex-col items-stretch">
+          {spaces.map((space) => (
+            <NavLink
+              key={space.to}
+              to={space.to}
+              className={({ isActive }) =>
+                `rail-item relative flex h-[2.75rem] items-center overflow-hidden whitespace-nowrap pl-[1.125rem] ${isActive ? 'active' : ''}`
+              }
+            >
+              <span className="rail-label text-[0.5rem] leading-none">{space.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+    </div>
   );
-};
-
-export default SideNavigator;
+}

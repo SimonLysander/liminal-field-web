@@ -7,8 +7,8 @@ export const EditorShell = ({
   children: ReactNode;
   sidePanel: ReactNode;
 }) => (
-  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-    <div className="space-y-4">{children}</div>
-    <aside className="space-y-4 rounded border border-slate-200 bg-slate-50 p-4">{sidePanel}</aside>
+  <div className="admin-shell-grid">
+    <div className="admin-shell-main">{children}</div>
+    <aside className="admin-shell-side">{sidePanel}</aside>
   </div>
 );

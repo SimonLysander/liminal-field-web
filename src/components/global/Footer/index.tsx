@@ -1,4 +1,3 @@
-/** 页脚：最后一次构建时间 + Hash ID */
 const Footer = () => {
   const buildTime =
     typeof import.meta.env.VITE_BUILD_TIME !== 'undefined'
@@ -10,9 +9,11 @@ const Footer = () => {
       : 'dev';
 
   return (
-    <footer className="flex items-center justify-center gap-4 border-t border-border px-4 py-2 text-xs text-muted-foreground">
-      <span>Build: {buildTime}</span>
-      <span>Hash: {buildHash}</span>
+    <footer className="lf-breadcrumb mx-auto mb-1 mt-auto w-full justify-between text-[0.74rem]">
+      <span>Liminal Field · public shell</span>
+      <span className="truncate text-[hsl(var(--ink-faded))]">
+        Build {buildTime} · {buildHash}
+      </span>
     </footer>
   );
 };

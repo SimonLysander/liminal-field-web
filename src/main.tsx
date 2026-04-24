@@ -5,13 +5,16 @@ import 'virtual:uno.css';
 import App from './App.tsx';
 import './index.css';
 
-// 初始化主题（避免闪烁）
+// Apply the persisted shell theme before React mounts so the room does not
+// flash from an unrelated palette on initial load.
 try {
   const stored = localStorage.getItem('liminal-theme');
-  if (stored === 'dark') document.documentElement.classList.add('dark');
-  else if (stored === 'light') document.documentElement.classList.remove('dark');
+  document.body.setAttribute(
+    'data-theme',
+    stored === 'daylight' || stored === 'midnight' ? stored : 'daylight',
+  );
 } catch {
-  /* ignore */
+  document.body.setAttribute('data-theme', 'daylight');
 }
 
 createRoot(document.getElementById('root')!).render(

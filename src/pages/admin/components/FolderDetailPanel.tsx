@@ -4,29 +4,31 @@ import type { TreeNode } from '../types';
 export const FolderDetailPanel = ({ node }: { node: TreeNode | null }) => {
   if (!node) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-slate-400">
-        Select a folder node to inspect it.
+      <div className="admin-empty-state">
+        <div className="admin-empty-title">No folder selected</div>
+        <p className="admin-copy">Pick a folder node to inspect its archival metadata.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">{node.name}</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Folder nodes only organize the tree. They do not own markdown content.
+    <div className="admin-stack-gap">
+      <div className="admin-section-heading">
+        <div className="panel-label">Folder Node</div>
+        <h2 className="page-title">{node.name}</h2>
+        <p className="admin-copy">
+          Folder nodes only shape the tree. They never hold markdown bodies or formal versions.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded border border-slate-200 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Node ID</p>
-          <p className="mt-2 break-all font-mono text-sm text-slate-700">{node.id}</p>
+      <div className="admin-meta-grid">
+        <div className="admin-meta-card">
+          <div className="admin-meta-label">Node ID</div>
+          <div className="admin-mono">{node.id}</div>
         </div>
-        <div className="rounded border border-slate-200 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Updated At</p>
-          <p className="mt-2 text-sm text-slate-700">{formatDate(node.updatedAt)}</p>
+        <div className="admin-meta-card">
+          <div className="admin-meta-label">Updated At</div>
+          <div>{formatDate(node.updatedAt)}</div>
         </div>
       </div>
     </div>

@@ -150,153 +150,94 @@ export const DraftWorkspace = ({
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+    <div className="admin-stack-gap">
+      <div className="admin-section-heading admin-section-row">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">{node.name}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Draft workspace based on the current {formalStatus} formal version.
+          <div className="panel-label">Draft Workspace</div>
+          <h2 className="page-title">{node.name}</h2>
+          <p className="admin-copy">
+            This draft is based on the current {formalStatus} formal version. Commit creates a new formal version; publish is separate.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void onBackToContent()}
-            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
-          >
+        <div className="admin-action-row">
+          <button type="button" className="admin-button" onClick={() => void onBackToContent()}>
             Back to Content
           </button>
-          <button
-            type="button"
-            onClick={() => void onReloadDraft()}
-            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
-          >
+          <button type="button" className="admin-button" onClick={() => void onReloadDraft()}>
             Reload Draft
           </button>
-          <button
-            type="button"
-            onClick={() => void onSaveDraft()}
-            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
-          >
+          <button type="button" className="admin-button" onClick={() => void onSaveDraft()}>
             Save Draft
           </button>
-          <button
-            type="button"
-            onClick={() => void onCommitDraft()}
-            className="rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
-          >
+          <button type="button" className="admin-button admin-button-primary" onClick={() => void onCommitDraft()}>
             Commit
           </button>
-          <button
-            type="button"
-            onClick={() => void handleDiscardDraft()}
-            className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
+          <button type="button" className="admin-button admin-button-danger" onClick={() => void handleDiscardDraft()}>
             Discard Draft
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
-          Loading draft workspace...
-        </div>
+        <div className="admin-empty-state">Loading draft workspace...</div>
       ) : error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="admin-inline-error">{error}</div>
       ) : (
         <>
-          {draftInfo && (
-            <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {draftInfo}
-            </div>
-          )}
+          {draftInfo ? <div className="admin-inline-note">{draftInfo}</div> : null}
+          {actionMessage ? <div className="admin-inline-success">{actionMessage}</div> : null}
           {(isDirty || isAutosaving || lastDraftSavedAt || autosaveError) && (
-            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span>
-                  {isAutosaving
-                    ? 'Autosaving...'
-                    : isDirty
-                      ? 'Unsaved draft changes'
-                      : 'Draft synced'}
-                </span>
-                {lastDraftSavedAt && (
-                  <span>
-                    Last draft:{' '}
-                    {new Date(lastDraftSavedAt).toLocaleString('zh-CN')}
-                  </span>
-                )}
-                <span>
-                  Shortcut: Ctrl/Cmd + S commit, Ctrl/Cmd + Shift + S save draft
-                </span>
+            <div className="admin-inline-note">
+              <div className="admin-inline-wrap">
+                <span>{isAutosaving ? 'Autosaving...' : isDirty ? 'Unsaved draft changes' : 'Draft synced'}</span>
+                {lastDraftSavedAt ? <span>Last draft {new Date(lastDraftSavedAt).toLocaleString('zh-CN')}</span> : null}
+                <span>Ctrl/Cmd + S commit ¡¤ Ctrl/Cmd + Shift + S save draft</span>
               </div>
-              {autosaveError && <p className="mt-2 text-red-600">{autosaveError}</p>}
-            </div>
-          )}
-          {actionMessage && (
-            <div className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {actionMessage}
+              {autosaveError ? <p className="admin-error-copy">{autosaveError}</p> : null}
             </div>
           )}
 
           <EditorShell
             sidePanel={
               <>
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Draft Status</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {draftPresence.exists
-                      ? 'An editor draft already exists for this content item.'
-                      : 'This draft workspace has not been persisted yet.'}
+                <section className="admin-side-section">
+                  <div className="panel-label">Draft Status</div>
+                  <div className="admin-note-card">
+                    <div className="admin-note-line">
+                      <span>Persisted draft</span>
+                      <strong>{draftPresence.exists ? 'yes' : 'no'}</strong>
+                    </div>
+                    <div className="admin-note-line is-wrap">
+                      <span>Saved at</span>
+                      <strong>{draftPresence.savedAt ? new Date(draftPresence.savedAt).toLocaleString('zh-CN') : '--'}</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="admin-side-section">
+                  <div className="panel-label">Assets</div>
+                  <p className="admin-copy">
+                    Draft assets write into the same content directory. Inserted paths stay under ./assets/.
                   </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Assets</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Draft assets are written into the same content directory and can be inserted
-                    into Markdown paths under ./assets/.
-                  </p>
-                </div>
-
-                <label className="flex cursor-pointer items-center justify-center rounded border border-dashed border-slate-300 bg-white px-3 py-3 text-sm text-slate-600 hover:border-slate-400">
-                  Select File
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={(event) => void handleAssetInput(event)}
-                  />
-                </label>
-
-                <div className="space-y-2">
-                  {assetsLoading ? (
-                    <p className="text-sm text-slate-400">Loading assets...</p>
-                  ) : assets.length === 0 ? (
-                    <p className="text-sm text-slate-400">No assets yet.</p>
-                  ) : (
-                    assets.map((asset) => (
-                      <div
-                        key={asset.path}
-                        className="rounded border border-slate-200 bg-white p-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-slate-800">
-                              {asset.fileName}
-                            </p>
-                            <p className="mt-1 break-all font-mono text-xs text-slate-500">
-                              {asset.path}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {asset.type} Â· {asset.size} bytes
-                            </p>
-                          </div>
+                  <label className="admin-upload-box">
+                    Select File
+                    <input type="file" className="hidden" onChange={(event) => void handleAssetInput(event)} />
+                  </label>
+                  <div className="admin-side-list">
+                    {assetsLoading ? (
+                      <div className="admin-empty-state compact">Loading assets...</div>
+                    ) : assets.length === 0 ? (
+                      <div className="admin-empty-state compact">No assets yet.</div>
+                    ) : (
+                      assets.map((asset) => (
+                        <div key={asset.path} className="admin-side-card">
+                          <div className="admin-side-title">{asset.fileName}</div>
+                          <div className="admin-side-mono">{asset.path}</div>
+                          <div className="admin-side-caption">{asset.type} ¡¤ {asset.size} bytes</div>
                           <button
                             type="button"
-                            className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs text-slate-700"
+                            className="admin-button"
                             onClick={() => {
                               onInsertAsset(asset.path);
                               focusTextarea();
@@ -305,134 +246,84 @@ export const DraftWorkspace = ({
                             Insert
                           </button>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                </section>
               </>
             }
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Title
-                </label>
+            <div className="admin-meta-grid">
+              <label className="admin-field">
+                <span className="admin-meta-label">Title</span>
                 <input
                   type="text"
                   value={draftState.title}
                   onChange={(event) => onEditorChange('title', event.target.value)}
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  className="admin-input"
                 />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Change Type
-                </label>
+              </label>
+              <label className="admin-field">
+                <span className="admin-meta-label">Change Type</span>
                 <select
                   value={draftState.changeType}
-                  onChange={(event) =>
-                    onEditorChange(
-                      'changeType',
-                      event.target.value as ContentChangeType,
-                    )
-                  }
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(event) => onEditorChange('changeType', event.target.value as ContentChangeType)}
+                  className="admin-input"
                 >
                   <option value="patch">patch</option>
                   <option value="major">major</option>
                 </select>
-              </div>
+              </label>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Summary
-              </label>
+            <label className="admin-field">
+              <span className="admin-meta-label">Summary</span>
               <textarea
                 value={draftState.summary}
                 onChange={(event) => onEditorChange('summary', event.target.value)}
-                className="min-h-28 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                className="admin-textarea"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Change Note
-              </label>
+            <label className="admin-field">
+              <span className="admin-meta-label">Change Note</span>
               <input
                 type="text"
                 value={draftState.changeNote}
                 onChange={(event) => onEditorChange('changeNote', event.target.value)}
-                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                className="admin-input"
               />
-            </div>
+            </label>
 
-            <div>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyBlockInsertion('# ')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+            <div className="admin-detail-card">
+              <div className="admin-detail-header">
+                <div className="admin-meta-label">Markdown Body</div>
+                <div className="admin-side-caption">{draftState.bodyMarkdown.length} chars</div>
+              </div>
+              <div className="admin-toolbar">
+                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('# ')}>
                   H1
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyBlockInsertion('## ')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('## ')}>
                   H2
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyInlineInsertion('**', '**')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+                <button type="button" className="admin-tool" onClick={() => applyInlineInsertion('**', '**')}>
                   Bold
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyInlineInsertion('`', '`')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+                <button type="button" className="admin-tool" onClick={() => applyInlineInsertion('`', '`')}>
                   Inline Code
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyBlockInsertion('- ')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('- ')}>
                   List
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyBlockInsertion('```ts\n\n```')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('```ts\n\n```')}>
                   Code Block
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyBlockInsertion('![](./assets/example.png)')}
-                  className="rounded border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
-                >
+                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('![](./assets/example.png)')}>
                   Image
                 </button>
               </div>
-
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <label className="block text-sm font-medium text-slate-700">
-                  Markdown Body
-                </label>
-                <span className="text-xs text-slate-400">
-                  {draftState.bodyMarkdown.length} chars
-                </span>
-              </div>
-              <MarkdownEditorInput
-                ref={textareaRef}
-                value={draftState.bodyMarkdown}
-                onChange={(value) => onEditorChange('bodyMarkdown', value)}
-              />
+              <MarkdownEditorInput ref={textareaRef} value={draftState.bodyMarkdown} onChange={(value) => onEditorChange('bodyMarkdown', value)} />
             </div>
           </EditorShell>
         </>

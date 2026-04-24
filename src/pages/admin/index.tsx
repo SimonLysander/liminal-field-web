@@ -10,121 +10,135 @@ const AdminPage = () => {
   const workspace = useAdminWorkspace();
 
   return (
-    <div className="flex h-screen flex-col bg-slate-100">
-      <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900">Admin Workspace</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Manage structure, editor drafts, committed content, published documents, and assets in one place.
-            </p>
+    <div className="admin-view">
+      <TreePanel
+        tree={workspace.tree}
+        loading={workspace.loading}
+        error={workspace.error}
+        selectedNodeId={workspace.selectedNode?.id ?? null}
+        onReload={workspace.loadRoots}
+        onSelect={workspace.setSelectedNode}
+        onExpand={workspace.handleExpand}
+        onAddChild={workspace.openCreate}
+        onEdit={workspace.openEdit}
+        onDelete={workspace.setDeleteTarget}
+      />
+
+      <section className="admin-center admin-panel">
+        <div className="admin-surface admin-paper admin-stack-gap">
+          <div className="admin-header-strip">
+            <div>
+              <div className="panel-label">Admin Workspace</div>
+              <h1 className="page-title">Knowledge-Base Control Room</h1>
+              <p className="admin-copy">
+                Structure, formal versions, draft workspaces, and assets all stay in one archive-like room.
+              </p>
+            </div>
+
+            <div className="admin-header-actions">
+              <button type="button" className="admin-button" onClick={() => void workspace.loadRoots()}>
+                Reload Tree
+              </button>
+              <button type="button" className="admin-button admin-button-primary" onClick={() => workspace.openCreate()}>
+                New Root
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600">
-              {workspace.totalNodes} nodes
-            </span>
-            <button
-              type="button"
-              onClick={() => void workspace.loadRoots()}
-              className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
-            >
-              Reload Tree
-            </button>
-            <button
-              type="button"
-              onClick={() => workspace.openCreate()}
-              className="rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
-            >
-              New Root
-            </button>
+
+          {!workspace.selectedNode ? (
+            <div className="admin-empty-state">
+              <div className="admin-empty-title">No node selected</div>
+              <p className="admin-copy">
+                Pick a folder or doc from the left archive rail. The center sheet only renders one formal object at a time.
+              </p>
+            </div>
+          ) : workspace.selectedNode.type === 'FOLDER' ? (
+            <FolderDetailPanel node={workspace.selectedNode} />
+          ) : workspace.selectedNode.contentItemId ? (
+            workspace.workspaceMode === 'draft' ? (
+              <DraftWorkspace
+                node={workspace.selectedNode}
+                formalStatus={workspace.formalContent.status}
+                draftState={workspace.draftState}
+                draftPresence={workspace.draftPresence}
+                loading={workspace.contentLoading}
+                error={workspace.contentError}
+                draftInfo={workspace.draftInfo}
+                isDirty={workspace.isDirty}
+                isAutosaving={workspace.isAutosaving}
+                lastDraftSavedAt={workspace.lastDraftSavedAt}
+                autosaveError={workspace.autosaveError}
+                assets={workspace.assets}
+                assetsLoading={workspace.assetsLoading}
+                actionMessage={workspace.actionMessage}
+                onReloadDraft={workspace.resumeDraft}
+                onBackToContent={() => workspace.setWorkspaceMode('formal')}
+                onEditorChange={workspace.handleDraftEditorChange}
+                onSaveDraft={workspace.saveDraft}
+                onCommitDraft={workspace.commitDraft}
+                onDiscardDraft={workspace.discardDraft}
+                onUploadAsset={workspace.uploadAsset}
+                onInsertAsset={workspace.insertAssetPath}
+              />
+            ) : (
+              <ContentVersionView
+                node={workspace.selectedNode}
+                content={workspace.formalContent}
+                loading={workspace.contentLoading}
+                error={workspace.contentError}
+                history={workspace.history}
+                historyLoading={workspace.historyLoading}
+                assets={workspace.assets}
+                assetsLoading={workspace.assetsLoading}
+                draftPresence={workspace.draftPresence}
+                actionMessage={workspace.actionMessage}
+                onReload={() => workspace.loadFormalContent(workspace.selectedNode!.contentItemId!)}
+                onPublish={workspace.publishContent}
+                onUnpublish={workspace.unpublishContent}
+                onCreateDraft={() => workspace.createDraftFromFormalVersion(false)}
+                onResumeDraft={workspace.resumeDraft}
+                onOverwriteDraft={() => workspace.createDraftFromFormalVersion(true)}
+              />
+            )
+          ) : (
+            <div className="admin-empty-state">
+              <div className="admin-empty-title">Broken DOC binding</div>
+              <p className="admin-copy">
+                This DOC node has no content item binding. Recreate it through the current flow instead of patching the broken reference.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <aside className="admin-right admin-panel">
+        <div className="admin-surface admin-side-stack">
+          <div>
+            <div className="panel-label">System Status</div>
+            <div className="admin-note-card">
+              <div className="admin-note-line">
+                <span>Total nodes</span>
+                <strong>{workspace.totalNodes}</strong>
+              </div>
+              <div className="admin-note-line">
+                <span>Selection</span>
+                <strong>{workspace.selectedNode?.name ?? '--'}</strong>
+              </div>
+              <div className="admin-note-line">
+                <span>Mode</span>
+                <strong>{workspace.workspaceMode}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="panel-label">Operator Notes</div>
+            <div className="admin-note-card admin-copy">
+              Formal pages are read-only. Draft workspaces hold editing, autosave, and commit. Publish only flips the public pointer.
+            </div>
           </div>
         </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <TreePanel
-          tree={workspace.tree}
-          loading={workspace.loading}
-          error={workspace.error}
-          selectedNodeId={workspace.selectedNode?.id ?? null}
-          onReload={workspace.loadRoots}
-          onSelect={workspace.setSelectedNode}
-          onExpand={workspace.handleExpand}
-          onAddChild={workspace.openCreate}
-          onEdit={workspace.openEdit}
-          onDelete={workspace.setDeleteTarget}
-        />
-
-        <main className="min-w-0 flex-1 overflow-y-auto p-6">
-          <div className="min-h-full rounded border border-slate-200 bg-white p-6">
-            {!workspace.selectedNode ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                Select a node from the left tree.
-              </div>
-            ) : workspace.selectedNode.type === 'FOLDER' ? (
-              <FolderDetailPanel node={workspace.selectedNode} />
-            ) : workspace.selectedNode.contentItemId ? (
-              workspace.workspaceMode === 'draft' ? (
-                <DraftWorkspace
-                  node={workspace.selectedNode}
-                  formalStatus={workspace.formalContent.status}
-                  draftState={workspace.draftState}
-                  draftPresence={workspace.draftPresence}
-                  loading={workspace.contentLoading}
-                  error={workspace.contentError}
-                  draftInfo={workspace.draftInfo}
-                  isDirty={workspace.isDirty}
-                  isAutosaving={workspace.isAutosaving}
-                  lastDraftSavedAt={workspace.lastDraftSavedAt}
-                  autosaveError={workspace.autosaveError}
-                  assets={workspace.assets}
-                  assetsLoading={workspace.assetsLoading}
-                  actionMessage={workspace.actionMessage}
-                  onReloadDraft={workspace.resumeDraft}
-                  onBackToContent={() => workspace.setWorkspaceMode('formal')}
-                  onEditorChange={workspace.handleDraftEditorChange}
-                  onSaveDraft={workspace.saveDraft}
-                  onCommitDraft={workspace.commitDraft}
-                  onDiscardDraft={workspace.discardDraft}
-                  onUploadAsset={workspace.uploadAsset}
-                  onInsertAsset={workspace.insertAssetPath}
-                />
-              ) : (
-                <ContentVersionView
-                  node={workspace.selectedNode}
-                  content={workspace.formalContent}
-                  loading={workspace.contentLoading}
-                  error={workspace.contentError}
-                  history={workspace.history}
-                  historyLoading={workspace.historyLoading}
-                  assets={workspace.assets}
-                  assetsLoading={workspace.assetsLoading}
-                  draftPresence={workspace.draftPresence}
-                  actionMessage={workspace.actionMessage}
-                  onReload={() =>
-                    workspace.loadFormalContent(
-                      workspace.selectedNode!.contentItemId!,
-                    )
-                  }
-                  onPublish={workspace.publishContent}
-                  onUnpublish={workspace.unpublishContent}
-                  onCreateDraft={() =>
-                    workspace.createDraftFromFormalVersion(false)
-                  }
-                  onResumeDraft={workspace.resumeDraft}
-                  onOverwriteDraft={() =>
-                    workspace.createDraftFromFormalVersion(true)
-                  }
-                />
-              )
-            ) : (
-              <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                This DOC node has no content binding and should be recreated through the new flow.
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+      </aside>
 
       {workspace.modal.open && (
         <NodeFormModal

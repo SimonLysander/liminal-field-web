@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useEffect, useMemo, useState } from 'react';
 import { contentItemsApi, type ContentDetail } from '@/services/content-items';
 import type { StructureNode } from '@/services/structure';
 
@@ -26,57 +25,80 @@ const NoteContent = ({ activeNode }: NoteContentProps) => {
     const loadContentItem = async () => {
       setIsLoading(true);
       setError(null);
-
       try {
         const item = await contentItemsApi.getById(contentItemId);
-        if (!isCancelled) {
-          setContentItem(item);
-        }
+        if (!isCancelled) setContentItem(item);
       } catch (loadError) {
         if (!isCancelled) {
           setContentItem(null);
           setError(loadError instanceof Error ? loadError.message : 'Failed to load content');
         }
       } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        if (!isCancelled) setIsLoading(false);
       }
     };
 
     void loadContentItem();
-
     return () => {
       isCancelled = true;
     };
   }, [contentItemId]);
 
-  return (
-    <main className="flex min-w-0 flex-1 flex-col">
-      <ScrollArea className="flex-1">
-        <div className="max-w-none space-y-4 p-6">
-          {isLoading ? (
-            <p className="text-muted-foreground">Loading content...</p>
-          ) : error ? (
-            <p className="text-destructive">{error}</p>
-          ) : contentItem ? (
-            <>
-              <div className="space-y-2">
-                <h1 className="text-xl font-semibold">{contentItem.title}</h1>
-                <p className="text-sm text-muted-foreground">{contentItem.summary}</p>
-                <p className="text-xs text-muted-foreground">
-                  status: {contentItem.status} 路 updated: {new Date(contentItem.updatedAt).toLocaleString('zh-CN')}
-                </p>
-              </div>
+  const paragraphs = useMemo(() => {
+    if (!contentItem?.bodyMarkdown) return [];
+    return contentItem.bodyMarkdown.split(/\n{2,}/).filter(Boolean);
+  }, [contentItem?.bodyMarkdown]);
 
-              <div className="whitespace-pre-wrap text-sm leading-7">{contentItem.bodyMarkdown}</div>
-            </>
-          ) : (
-            <p className="text-muted-foreground">Select a document from the left navigator.</p>
-          )}
+  if (isLoading) {
+    return (
+      <div className="notes-center flex flex-1 flex-col rounded-[1.375rem] px-[1.75rem] py-[1.5rem]">
+        <div className="article-title">Loading…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="notes-center flex flex-1 flex-col rounded-[1.375rem] px-[1.75rem] py-[1.5rem]">
+        <div className="article-title">Error</div>
+        <div className="article-body mt-[1rem]">
+          <p>{error}</p>
         </div>
-      </ScrollArea>
-    </main>
+      </div>
+    );
+  }
+
+  if (!contentItem) {
+    return (
+      <div className="notes-center flex flex-1 flex-col rounded-[1.375rem] px-[1.75rem] py-[1.5rem]">
+        <div className="article-meta-row flex items-center justify-between gap-[1rem]">
+          <span className="article-date">Published room</span>
+          <span className="article-reading">formal reading only</span>
+        </div>
+        <div className="article-title mt-[1rem]">从左侧书架选择一篇已发布文稿。</div>
+        <div className="article-body mt-[1rem]">
+          <p>这里不负责草稿、不负责编辑，也不负责发布控制。它只负责安静地展示当前公开版本。</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="notes-center paper-texture flex flex-1 flex-col rounded-[1.375rem] px-[1.75rem] py-[1.5rem]">
+      <div className="article-meta-row flex items-center justify-between gap-[1rem]">
+        <span className="article-date">{new Date(contentItem.updatedAt).toLocaleString('zh-CN')}</span>
+        <span className="article-reading">published · {contentItem.bodyMarkdown.length} chars</span>
+      </div>
+      <div className="article-title mt-[1rem]">{contentItem.publishedVersion?.title ?? contentItem.latestVersion.title}</div>
+      <div className="article-body mt-[1rem]">
+        {(contentItem.publishedVersion?.summary ?? contentItem.latestVersion.summary) ? (
+          <p>{contentItem.publishedVersion?.summary ?? contentItem.latestVersion.summary}</p>
+        ) : null}
+        {paragraphs.map((paragraph, index) => (
+          <p key={`${index}-${paragraph.slice(0, 12)}`}>{paragraph}</p>
+        ))}
+      </div>
+    </div>
   );
 };
 
