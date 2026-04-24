@@ -1,59 +1,161 @@
+import { motion } from 'motion/react';
+import { appleEase } from '@/lib/motion';
+
+/* ---------- Helpers ---------- */
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 6) return 'å¤œæ·±äº†';
+  if (h < 12) return 'æ—©ä¸Šå¥½';
+  if (h < 14) return 'ä¸­åˆå¥½';
+  if (h < 18) return 'ä¸‹åˆå¥½';
+  return 'æ™šä¸Šå¥½';
+}
+
+/* ---------- Mock Data ---------- */
+
 const activities = [
-  { date: 'Apr 23, 2026', text: 'ÖØÐ´ÁË¹«¿ªÔÄ¶ÁÓëÍ¼¿â¿ÇÌå£¬ÈÃÒ³Ãæ»Øµ½ Archive µÄÖÈÐòÀï¡£', type: 'Õ¾µã ¡¤ ¸Ä°æ' },
-  { date: 'Apr 22, 2026', text: 'Íê³ÉÁËÒ»´ÎÐÂµÄÕýÊ½°æ±¾Ìá½»£¬²¢±£³Öµ±Ç°¹«¿ª°æ±¾²»±»Ö±½ÓÌæ»»¡£', type: 'ÎÄ¸å ¡¤ Ìá½»' },
-  { date: 'Apr 21, 2026', text: '²Ý¸å¹¤×÷ÇøÓëÕýÊ½ÄÚÈÝÒ³³¹µ×·ÖÀë£¬±à¼­²»ÔÙÎÛÈ¾¹«¿ªÔÄ¶Á¡£', type: '¹¤×÷Á÷ ¡¤ ÖØ¹¹' },
-  { date: 'Apr 20, 2026', text: '½ÓÈë Git °æ±¾ÀúÊ·£¬²¢Ã÷È· latestVersion Óë publishedVersion µÄÖ°Ôð¡£', type: '°æ±¾ ¡¤ ½ÓÍ¨' },
-  { date: 'Apr 18, 2026', text: 'È·¶¨ Archive ÎªÎ¨Ò»ÊÓ¾õ²Î¿¼£¬²»ÔÙ¶îÍâ·¢Ã÷ÐÂµÄÇ°¶ËÓïÑÔ¡£', type: 'Éè¼Æ ¡¤ ¶ÔÆë' },
+  { date: 'Apr 22', text: 'ç¼–è¾‘äº†ã€Œé˜ˆé™ç©ºé—´é‡Œçš„åˆ›ä½œæ–¹æ³•è®ºã€ï¼Œæ–°å¢žç¬¬ä¸‰ç« å…³äºŽè¾¹ç•Œæ„ŸçŸ¥çš„æ®µè½ã€‚', type: 'æ–‡ç¨¿' },
+  { date: 'Apr 21', text: 'ä¸Šä¼ äº† 4 å¼ é’å²›æµ·è¾¹çš„ç…§ç‰‡ï¼Œæ ‡è®°ä¸ºã€Œæ‰å¹³å…‰ã€é£Žæ ¼ã€‚', type: 'Gallery' },
+  { date: 'Apr 20', text: 'Agent åˆ†æžäº†è¿‘æœŸç¬”è®°ï¼Œå‘çŽ°ã€Œé€šæ„Ÿã€æ˜¯åå¤å‡ºçŽ°çš„ä¸»é¢˜ã€‚', type: 'Agent' },
+  { date: 'Apr 18', text: 'å®Œæˆäº†ã€Œå£°éŸ³çš„å½¢çŠ¶ã€åˆç¨¿ï¼Œçº¦ 1200 å­—ã€‚', type: 'æ–‡ç¨¿' },
+  { date: 'Apr 15', text: 'æ–°å»ºæ ‡ç­¾ã€Œæ„Ÿå®˜è¶Šå¢ƒã€ï¼Œå…³è”äº† 3 ç¯‡æ–‡ç¨¿å’Œ 7 å¼ å›¾ç‰‡ã€‚', type: 'æ ‡ç­¾' },
 ];
 
 const features = [
-  {
-    label: '¾«Ñ¡ÎÄ¸å',
-    title: 'Published Notes',
-    body: '¹«¿ªÔÄ¶ÁÖ»³ÐÔØÒÑ·¢²¼°æ±¾£¬ÕýÊ½ÄÚÈÝÓë²Ý¸å±à¼­¶¼´ÓÕâ¸ö·¿¼ä³·³ö¡£',
-    thumb: 'ÔÄ¶Á×ÀÃæ',
-  },
-  {
-    label: '¾«Ñ¡Í¼Ïñ',
-    title: 'Gallery Sequence',
-    body: '±êÇ©¡¢Ê±¼äÏßÓëÖÐÐÄÏàÆ¬¼ÜÖØÐÂ±ä³É¸¨Öú¹ØÏµ£¬¶ø²»ÊÇ·º»¯µÄºóÌ¨²¼¾Ö¡£',
-    thumb: 'Í¼ÏñÐòÁÐ',
-  },
-  {
-    label: 'ÏµÍ³×´Ì¬',
-    title: 'Versioned Archive',
-    body: 'Commit ¸ºÔðÐÎ³ÉÕýÊ½°æ±¾£¬Publish Ö»¸ºÔðÇÐ»»¹«¿ªÖ¸Õë£¬Ò³ÃæÓïÒåÖÕÓÚ¸É¾»¡£',
-    thumb: '°æ±¾Ö¸Õë',
-  },
+  { label: 'ç²¾é€‰æ–‡ç¨¿', title: 'é˜ˆé™ç©ºé—´é‡Œçš„åˆ›ä½œæ–¹æ³•è®º', body: 'åœ¨è¾¹ç•Œä¸Žè¾¹ç•Œä¹‹é—´ï¼Œå­˜åœ¨ä¸€ç§å°šæœªè¢«å‘½åçš„çŠ¶æ€ã€‚å®ƒä¸æ˜¯æ··ä¹±ï¼Œè€Œæ˜¯ä¸€ç§æ›´é«˜ç»´åº¦çš„ç§©åºã€‚', count: '3 ç¯‡è¿‘æœŸæ–‡ç¨¿' },
+  { label: 'ç²¾é€‰å›¾ç‰‡', title: 'é’å²› Â· å››æœˆçš„æµ·', body: 'æ‰å¹³å…‰ä¸‹çš„æµ·é¢åƒä¸€å—æ²¡æœ‰è¤¶çš±çš„ç°è‰²ä¸ç»¸ï¼Œæ‰€æœ‰çš„æˆå‰§æ€§éƒ½è¢«å¤©æ°”æŠ¹å¹³äº†ã€‚', count: '12 å¼ è¿‘æœŸå›¾ç‰‡' },
+  { label: 'ç«™ç‚¹ä¼åˆ’', title: 'Liminal Field å¼€æºè®¡åˆ’', body: 'é…è‰²ç³»ç»Ÿå·²å®Œæˆï¼Œä¸‹ä¸€æ­¥æ˜¯ç»„ä»¶åº“æ­å»ºå’Œæ–‡ç¨¿ç¼–è¾‘å™¨çš„å¼€å‘ã€‚', count: 'è¿›è¡Œä¸­' },
 ];
 
-const HomePage = () => {
+/**
+ * Staggered fade-up animation: each item delays by 50ms Ã— index,
+ * creating a cascading reveal effect.
+ */
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.05, duration: 0.45, ease: appleEase },
+  }),
+};
+
+/* ---------- Component ---------- */
+
+export default function HomePage() {
   return (
-    <div className="home-view flex flex-1 flex-col gap-[1.5rem] overflow-y-auto px-[1.5rem] pb-[1.5rem] pt-[1rem]">
-      <div className="home-activity paper-texture flex flex-col rounded-[1.125rem] px-[1.5rem] py-[1.25rem]">
-        <div className="home-activity-title mb-[0.875rem]">×î½ü»î¶¯</div>
-        <div className="activity-timeline flex flex-col gap-[0.625rem]">
-          {activities.map((activity) => (
-            <div key={`${activity.date}-${activity.type}`} className="activity-item">
-              <div className="activity-date">{activity.date}</div>
-              <div className="activity-text">{activity.text}</div>
-              <div className="activity-type">{activity.type}</div>
-            </div>
+    <div className="flex flex-1 flex-col gap-9 overflow-y-auto px-12 py-10">
+      {/* Greeting */}
+      <motion.div
+        className="pb-1 pt-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: appleEase }}
+      >
+        <h1
+          className="text-[28px] font-bold leading-tight"
+          style={{ color: 'var(--ink)', letterSpacing: '-0.025em' }}
+        >
+          {getGreeting()}
+        </h1>
+        <p className="mt-1.5 text-[14px]" style={{ color: 'var(--ink-ghost)' }}>
+          11 ç¯‡æ–‡ç¨¿ Â· 47 å¼ å›¾ç‰‡ Â· 18 ä¸ªæ ‡ç­¾
+        </p>
+      </motion.div>
+
+      {/* Activity feed */}
+      <div>
+        <div
+          className="mb-3.5 text-[11px] font-semibold uppercase"
+          style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+        >
+          æœ€è¿‘æ´»åŠ¨
+        </div>
+        <div className="flex flex-col">
+          {activities.map((a, i) => (
+            <motion.div
+              key={i}
+              className="group flex cursor-default items-start gap-4 py-3.5 transition-colors duration-150"
+              style={{ borderBottom: i < activities.length - 1 ? '0.5px solid var(--separator)' : 'none' }}
+              custom={i}
+              initial="hidden"
+              animate="show"
+              variants={fadeUp}
+            >
+              <span
+                className="shrink-0 pt-px text-[12px] tabular-nums"
+                style={{ color: 'var(--ink-ghost)', minWidth: 48 }}
+              >
+                {a.date}
+              </span>
+              <span
+                className="flex-1 text-[14px] leading-relaxed"
+                style={{ color: 'var(--ink-light)', letterSpacing: '-0.003em' }}
+              >
+                {a.text}
+              </span>
+              <span
+                className="shrink-0 rounded px-2 py-0.5 text-[11px]"
+                style={{ color: 'var(--ink-ghost)', background: 'var(--paper-dark)' }}
+              >
+                {a.type}
+              </span>
+            </motion.div>
           ))}
         </div>
       </div>
-      <div className="home-features grid min-h-0 grid-cols-3 gap-[1.5rem]">
-        {features.map((feature) => (
-          <div key={feature.title} className="feature-card paper-texture flex min-h-[17.5rem] flex-col rounded-[1.375rem] px-[1.375rem] py-[1.25rem]">
-            <div className="feature-label">{feature.label}</div>
-            <div className="card-title mt-[0.625rem]">{feature.title}</div>
-            <div className="card-body mt-[0.75rem] flex-1">{feature.body}</div>
-            <div className="feature-thumb mt-[1rem]">{feature.thumb}</div>
-          </div>
-        ))}
+
+      {/* Feature cards */}
+      <div>
+        <div
+          className="mb-3.5 text-[11px] font-semibold uppercase"
+          style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+        >
+          ç²¾é€‰
+        </div>
+        <div className="grid grid-cols-3 gap-3.5">
+          {features.map((f, i) => (
+            <motion.div
+              key={i}
+              className="flex cursor-pointer flex-col rounded-xl p-6 transition-all duration-300"
+              style={{ background: 'var(--paper-dark)' }}
+              custom={i + 3}
+              initial="hidden"
+              animate="show"
+              variants={fadeUp}
+              whileHover={{ y: -2, transition: { duration: 0.25, ease: appleEase } }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div
+                className="mb-3.5 text-[11px] font-semibold uppercase"
+                style={{ color: 'var(--ink-ghost)', letterSpacing: '0.03em' }}
+              >
+                {f.label}
+              </div>
+              <div
+                className="mb-2 text-[15px] font-semibold leading-snug"
+                style={{ color: 'var(--ink)', letterSpacing: '-0.015em' }}
+              >
+                {f.title}
+              </div>
+              <div
+                className="text-[13px] leading-relaxed"
+                style={{ color: 'var(--ink-faded)', letterSpacing: '-0.003em' }}
+              >
+                {f.body}
+              </div>
+              <div
+                className="mt-auto pt-4 text-[11px]"
+                style={{ color: 'var(--ink-ghost)' }}
+              >
+                {f.count}
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );
-};
-
-export default HomePage;
+}

@@ -1,198 +1,245 @@
-import { useEffect, useMemo, useState } from 'react';
-import { contentItemsApi, type ContentDetail, type ContentListItem } from '@/services/content-items';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { smoothBounce } from '@/lib/motion';
 
-const formatDate = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/* ---------- Mock Data ---------- */
 
-const GalleryPage = () => {
-  const [items, setItems] = useState<ContentListItem[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeDetail, setActiveDetail] = useState<ContentDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const photos = [
+  {
+    file: 'IMG_2046.jpg', size: '4032 × 3024',
+    caption: '青岛 · 栈桥 · 四月', date: '2026.04.21',
+    camera: 'Ricoh GR III', settings: 'f/5.6 · 1/500s · ISO 200',
+    desc: '四月的海面像一块灰色丝绸。扁平光把所有的对比度都抹掉了，只剩下颜色与颜色之间最微妙的那一层差异。',
+  },
+  {
+    file: 'IMG_1987.jpg', size: '4032 × 3024',
+    caption: '青岛 · 老城 · 四月', date: '2026.04.21',
+    camera: 'Ricoh GR III', settings: 'f/2.8 · 1/125s · ISO 400',
+    desc: '老城的墙面在雨后有一种湿润的质感，像未干的水彩。',
+  },
+  {
+    file: 'IMG_1820.jpg', size: '6000 × 4000',
+    caption: '东京 · 下北泽 · 一月', date: '2026.01.15',
+    camera: 'X100V', settings: 'f/4 · 1/250s · ISO 800',
+    desc: '窄巷里的光线被建筑切割成锐利的几何形状。',
+  },
+];
 
-  useEffect(() => {
-    let isCancelled = false;
+const timeline = [
+  {
+    year: '2026',
+    months: [
+      { name: '四月', count: 4, active: true },
+      { name: '三月', count: 8 },
+      { name: '二月', count: 3 },
+      { name: '一月', count: 6 },
+    ],
+  },
+  {
+    year: '2025',
+    months: [
+      { name: '十二月', count: 12 },
+      { name: '十一月', count: 5 },
+      { name: '十月', count: 9 },
+      { name: '九月', count: 7 },
+      { name: '八月', count: 4 },
+    ],
+  },
+];
 
-    const loadItems = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const result = await contentItemsApi.list();
-        if (!isCancelled) {
-          setItems(result);
-          setActiveId(result[0]?.id ?? null);
-        }
-      } catch (loadError) {
-        if (!isCancelled) {
-          setItems([]);
-          setActiveId(null);
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load gallery.');
-        }
-      } finally {
-        if (!isCancelled) setIsLoading(false);
-      }
-    };
+/**
+ * Direction-aware slide animation: new photos slide in from the direction
+ * the user navigated (up = previous, down = next), creating spatial continuity.
+ */
+const slideVariants = {
+  enter: (dir: number) => ({ y: dir > 0 ? 40 : -40, opacity: 0 }),
+  center: { y: 0, opacity: 1 },
+  exit: (dir: number) => ({ y: dir > 0 ? -40 : 40, opacity: 0 }),
+};
 
-    void loadItems();
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+/* ---------- Component ---------- */
 
-  useEffect(() => {
-    if (!activeId) {
-      setActiveDetail(null);
-      return;
-    }
+export default function GalleryPage() {
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [direction, setDirection] = useState(0);
 
-    let isCancelled = false;
-
-    const loadDetail = async () => {
-      setIsDetailLoading(true);
-      try {
-        const detail = await contentItemsApi.getById(activeId);
-        if (!isCancelled) setActiveDetail(detail);
-      } catch (loadError) {
-        if (!isCancelled) {
-          setActiveDetail(null);
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load content detail.');
-        }
-      } finally {
-        if (!isCancelled) setIsDetailLoading(false);
-      }
-    };
-
-    void loadDetail();
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeId]);
-
-  const tagGroups = useMemo(() => {
-    const latestTitles = items.slice(0, 5).map((item, index) => ({ name: item.title, count: index + 1, active: item.id === activeId }));
-    const statuses = [
-      { name: 'published', count: items.filter((item) => item.status === 'published').length, active: !!activeDetail?.publishedVersion },
-      { name: 'committed', count: items.filter((item) => item.status === 'committed').length, active: activeDetail?.status === 'committed' },
-    ];
-    const assets = [
-      { name: 'with assets', count: items.filter((item) => item.latestChange?.changeType === 'major').length || 0, active: false },
-      { name: 'latest', count: items.length, active: false },
-    ];
-
-    return [
-      { label: 'Document', tags: latestTitles },
-      { label: 'Status', tags: statuses },
-      { label: 'Archive', tags: assets },
-    ];
-  }, [activeDetail?.publishedVersion, activeDetail?.status, activeId, items]);
-
-  const timeline = useMemo(() => {
-    const groups = new Map<string, { name: string; count: number; active: boolean }[]>();
-    items.forEach((item) => {
-      const date = new Date(item.updatedAt);
-      const year = String(date.getFullYear());
-      const month = `${date.getMonth() + 1}��`;
-      const current = groups.get(year) ?? [];
-      current.push({ name: month, count: 1, active: item.id === activeId });
-      groups.set(year, current);
+  const navigate = (dir: number) => {
+    setDirection(dir);
+    setPhotoIdx((prev) => {
+      const next = prev + dir;
+      if (next < 0) return photos.length - 1;
+      if (next >= photos.length) return 0;
+      return next;
     });
-    return [...groups.entries()].map(([year, months]) => ({ year, months }));
-  }, [activeId, items]);
-
-  const navigate = (dir: -1 | 1) => {
-    if (items.length === 0) return;
-    const index = items.findIndex((item) => item.id === activeId);
-    const next = dir > 0 ? (index >= items.length - 1 ? 0 : index + 1) : index <= 0 ? items.length - 1 : index - 1;
-    setActiveId(items[next]?.id ?? null);
   };
 
-  const detailTitle = activeDetail ? activeDetail.publishedVersion?.title ?? activeDetail.latestVersion.title : null;
-  const detailSummary = activeDetail
-    ? (activeDetail.publishedVersion?.summary ?? activeDetail.latestVersion.summary) || 'No summary yet.'
-    : null;
+  const photo = photos[photoIdx];
 
   return (
-    <div className="gallery-view flex h-full flex-1 gap-[1.25rem] overflow-hidden px-[1.5rem] pb-[1.5rem] pt-[1rem]">
-      <div className="gallery-left flex w-[15.5rem] shrink-0 flex-col rounded-[1.125rem] px-[1.25rem] py-[1.125rem]">
-        <div className="panel-label">Tag Filter</div>
-        <div className="mt-[0.75rem] flex flex-col gap-[0.875rem]">
-          {tagGroups.map((group) => (
-            <div key={group.label}>
-              <div className="tag-group-label">{group.label}</div>
-              <div className="tag-group mt-[0.375rem]">
-                {group.tags.map((tag) => (
-                  <span key={`${group.label}-${tag.name}`} className={`tag-item ${tag.active ? 'active' : ''}`}>
-                    {tag.name} <span className="tag-num">{tag.count}</span>
-                  </span>
-                ))}
-              </div>
+    <div className="flex flex-1 items-stretch overflow-hidden">
+      {/* Center — polaroid display */}
+      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-10 py-8">
+        {/* Polaroid frame */}
+        <div
+          className="relative transition-all duration-400"
+          style={{
+            background: 'var(--paper-white)',
+            padding: '8px 8px 32px',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-md)',
+            maxWidth: '75%',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+          }}
+        >
+          {/* Image area */}
+          <div
+            className="relative flex w-full items-center justify-center"
+            style={{
+              background: 'var(--paper-dark)',
+              borderRadius: 'var(--radius-sm)',
+              minHeight: 320,
+              aspectRatio: '4/3',
+            }}
+          >
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={photoIdx}
+                className="text-[13px]"
+                style={{ color: 'var(--ink-ghost)' }}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: smoothBounce }}
+              >
+                {photo.file} — {photo.size}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Navigation arrows — visible on hover */}
+            <div
+              className="absolute left-1/2 top-3 flex h-6 w-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-[8px] opacity-0 transition-all duration-250"
+              style={{ color: 'var(--ink-ghost)' }}
+              onClick={() => navigate(-1)}
+            >
+              &#x25B3;
             </div>
-          ))}
+            <div
+              className="absolute bottom-3 left-1/2 flex h-6 w-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-[8px] opacity-0 transition-all duration-250"
+              style={{ color: 'var(--ink-ghost)' }}
+              onClick={() => navigate(1)}
+            >
+              &#x25BD;
+            </div>
+          </div>
+
+          {/* Caption */}
+          <div className="px-1 pt-2.5 text-center text-[13px]" style={{ color: 'var(--ink-faded)' }}>
+            {photo.caption}
+          </div>
         </div>
-        {isLoading ? <div className="ai-hint mt-[1rem]">Loading gallery��</div> : null}
-        {error ? <div className="ai-hint mt-[1rem]">{error}</div> : null}
+
+        {/* Photo metadata */}
+        <motion.div
+          className="flex w-full max-w-[75%] flex-col gap-2 self-center pt-6"
+          key={photoIdx}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <div
+            className="flex justify-center gap-1.5 text-[11px]"
+            style={{ color: 'var(--ink-ghost)' }}
+          >
+            <span>{photo.date}</span>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span>{photo.camera}</span>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span>{photo.settings}</span>
+          </div>
+          <div
+            className="text-center text-[14px] leading-relaxed"
+            style={{ color: 'var(--ink-light)', letterSpacing: '-0.01em' }}
+          >
+            {photo.desc}
+          </div>
+        </motion.div>
       </div>
 
-      <div className="gallery-center flex min-w-0 flex-1 flex-col items-center gap-[1rem] rounded-[1.375rem] px-[1.5rem] py-[1.25rem]">
-        {isDetailLoading ? (
-          <div className="gallery-polaroid">
-            <div className="gallery-display">
-              <div className="gallery-display-placeholder">Loading��</div>
-            </div>
-            <div className="gallery-polaroid-caption">Loading detail</div>
-          </div>
-        ) : activeDetail ? (
-          <>
-            <div className="gallery-polaroid">
-              <div className="gallery-display">
-                <div className="gallery-display-placeholder">{detailTitle}</div>
-                <div className="gallery-nav prev" onClick={() => navigate(-1)}>
-                  ��
-                </div>
-                <div className="gallery-nav next" onClick={() => navigate(1)}>
-                  ��
-                </div>
-              </div>
-              <div className="gallery-polaroid-caption">{detailTitle}</div>
-            </div>
-            <div className="gallery-info w-full max-w-[32rem]">
-              <div className="gallery-info-meta">
-                <span>{formatDate(activeDetail.updatedAt)}</span>
-                <span>{activeDetail.status}</span>
-                <span>{activeDetail.assetRefs.length} assets</span>
-              </div>
-              <div className="gallery-info-desc">{detailSummary}</div>
-            </div>
-          </>
-        ) : (
-          <div className="gallery-polaroid">
-            <div className="gallery-display">
-              <div className="gallery-display-placeholder">Select a gallery item</div>
-            </div>
-            <div className="gallery-polaroid-caption">No active item</div>
-          </div>
-        )}
-      </div>
+      {/* Right — timeline */}
+      <div
+        className="flex w-[200px] shrink-0 flex-col overflow-y-auto px-4 py-10"
+        style={{ borderLeft: '0.5px solid var(--separator)' }}
+      >
+        <div
+          className="mb-3 text-[11px] font-semibold uppercase"
+          style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+        >
+          时间线
+        </div>
 
-      <div className="gallery-right flex w-[11rem] shrink-0 flex-col rounded-[1.125rem] px-[1.25rem] py-[1.125rem]">
-        <div className="panel-label">Timeline</div>
-        <div className="timeline-track mt-[0.75rem] flex-1">
-          {timeline.map((group) => (
-            <div key={group.year}>
-              <div className="timeline-year">{group.year}</div>
-              {group.months.map((month, index) => (
-                <div key={`${group.year}-${month.name}-${index}`} className={`tl-entry ${month.active ? 'active' : ''}`}>
-                  <span className="tl-dot" />
-                  {month.name}
-                  <span className="tl-count">{month.count}</span>
+        {/* Timeline track with vertical line */}
+        <div className="relative flex flex-col pl-[18px]">
+          {/* Vertical connector line */}
+          <div
+            className="absolute left-[5px] top-3.5 bottom-3.5 w-px"
+            style={{ background: 'var(--separator)' }}
+          />
+
+          {timeline.map((group, gi) => (
+            <div key={gi}>
+              {/* Year marker */}
+              <div
+                className="relative pb-1.5 pt-3.5 text-[11px] font-semibold"
+                style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.01em' }}
+              >
+                {/* Year dot */}
+                <span
+                  className="absolute top-1/2 -translate-y-1/2 rounded-full"
+                  style={{
+                    left: -16,
+                    width: 5,
+                    height: 5,
+                    border: '1.5px solid var(--ink-ghost)',
+                    background: 'var(--paper)',
+                  }}
+                />
+                {group.year}
+              </div>
+
+              {/* Month entries */}
+              {group.months.map((m, mi) => (
+                <div
+                  key={mi}
+                  className="relative flex cursor-pointer items-center gap-2 py-[5px] text-[13px] transition-all duration-200"
+                  style={{
+                    color: m.active ? 'var(--ink)' : 'var(--ink-faded)',
+                    fontWeight: m.active ? 600 : 400,
+                  }}
+                >
+                  {/* Timeline dot */}
+                  <span
+                    className="absolute -translate-y-1/2 rounded-full transition-all duration-250"
+                    style={{
+                      top: '50%',
+                      left: m.active ? -21 : -20,
+                      width: m.active ? 5 : 3,
+                      height: m.active ? 5 : 3,
+                      background: m.active ? 'var(--ink)' : 'var(--ink-ghost)',
+                    }}
+                  />
+                  {m.name}
+                  <span className="ml-auto text-[11px]" style={{ color: 'var(--ink-ghost)' }}>
+                    {m.count}
+                  </span>
                 </div>
               ))}
             </div>
@@ -201,6 +248,4 @@ const GalleryPage = () => {
       </div>
     </div>
   );
-};
-
-export default GalleryPage;
+}

@@ -1,12 +1,12 @@
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
-import UnoCSS from 'unocss/vite';
 import path from 'path';
 import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    UnoCSS(),
+    tailwindcss(),
     react(),
     {
       name: 'inject-build-info',

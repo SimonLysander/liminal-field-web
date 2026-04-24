@@ -1,22 +1,59 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import SideNavigator from './components/global/SideNavigator/index';
-import TopController from './components/global/TopController/index';
-import AdminPage from './pages/admin/index';
-import AgentPage from './pages/agent/index';
-import GalleryPage from './pages/gallery/index';
-import HomePage from './pages/home/index';
-import NotFoundPage from './pages/not-found/index';
-import NotePage from './pages/note/index';
+import { smoothBounce } from './lib/motion';
 
-function PublicShell() {
+import Sidebar from './components/global/Sidebar';
+import Topbar from './components/global/Topbar';
+import AgentPage from './pages/agent';
+import GalleryPage from './pages/gallery';
+import HomePage from './pages/home';
+import NotePage from './pages/note';
+import NotFoundPage from './pages/not-found';
+
+/**
+ * Page transition variants — subtle fade + vertical shift.
+ * Uses Apple-style easing [0.16, 1, 0.3, 1] for natural deceleration.
+ */
+const pageVariants = {
+  enter: { opacity: 0, y: 6 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+};
+
+function App() {
+  const location = useLocation();
+
+  /*
+   * Layout: sidebar (200px) sits in a paper-dark background,
+   * main content area is a raised card (rounded, shadowed) to the right.
+   * This creates the macOS-style split appearance from the reference design.
+   */
   return (
-    <>
-      <TopController />
-      <div className="layout mt-[2.625rem] flex h-[calc(100vh-2.625rem)]">
-        <SideNavigator />
-        <main className="main flex flex-1 overflow-hidden">
-          <div className="view-wrapper flex flex-1 overflow-hidden">
-            <Routes>
+    <div className="flex h-screen" style={{ background: 'var(--paper-dark)' }}>
+      <Sidebar />
+
+      <main
+        className="relative z-0 flex flex-1 flex-col overflow-hidden"
+        style={{
+          background: 'var(--paper)',
+          margin: '8px 8px 8px 0',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-sm), var(--inset-light)',
+        }}
+      >
+        <Topbar />
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            className="relative z-[1] flex flex-1 overflow-hidden"
+            variants={pageVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.25, ease: smoothBounce }}
+          >
+            <Routes location={location}>
               <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/home" element={<HomePage />} />
               <Route path="/note" element={<NotePage />} />
@@ -24,25 +61,11 @@ function PublicShell() {
               <Route path="/agent" element={<AgentPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
-          </div>
-        </main>
-      </div>
-    </>
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </div>
   );
-}
-
-function App() {
-  const location = useLocation();
-
-  if (location.pathname.startsWith('/admin')) {
-    return (
-      <Routes>
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    );
-  }
-
-  return <PublicShell />;
 }
 
 export default App;
