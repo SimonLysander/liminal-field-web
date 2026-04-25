@@ -1,54 +1,12 @@
-import { useEffect, useRef } from 'react';
-import { EditorShell } from './EditorShell';
-import { MarkdownEditorInput } from './MarkdownEditorInput';
+import { useEffect, useState } from 'react';
+import { PlateMarkdownEditor } from './PlateEditor';
 import type { DraftWorkspaceProps } from '../types';
 import type { ContentChangeType } from '@/services/content-items';
-
-function insertAroundSelection(
-  value: string,
-  selectionStart: number,
-  selectionEnd: number,
-  before: string,
-  after = '',
-) {
-  const selected = value.slice(selectionStart, selectionEnd);
-  const nextValue =
-    value.slice(0, selectionStart) +
-    before +
-    selected +
-    after +
-    value.slice(selectionEnd);
-
-  return {
-    nextValue,
-    nextSelectionStart: selectionStart + before.length,
-    nextSelectionEnd: selectionStart + before.length + selected.length,
-  };
-}
-
-function insertBlock(
-  value: string,
-  selectionStart: number,
-  selectionEnd: number,
-  block: string,
-) {
-  const prefix = value.slice(0, selectionStart);
-  const needsLeadingBreak = prefix.length > 0 && !prefix.endsWith('\n');
-  const insertion = `${needsLeadingBreak ? '\n' : ''}${block}`;
-  const nextValue = value.slice(0, selectionStart) + insertion + value.slice(selectionEnd);
-
-  return {
-    nextValue,
-    nextSelectionStart: selectionStart + insertion.length,
-    nextSelectionEnd: selectionStart + insertion.length,
-  };
-}
 
 export const DraftWorkspace = ({
   node,
   formalStatus,
   draftState,
-  draftPresence,
   loading,
   error,
   draftInfo,
@@ -56,8 +14,6 @@ export const DraftWorkspace = ({
   isAutosaving,
   lastDraftSavedAt,
   autosaveError,
-  assets,
-  assetsLoading,
   actionMessage,
   onReloadDraft,
   onBackToContent,
@@ -65,11 +21,14 @@ export const DraftWorkspace = ({
   onSaveDraft,
   onCommitDraft,
   onDiscardDraft,
-  onUploadAsset,
-  onInsertAsset,
 }: DraftWorkspaceProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  /*
+   * resetKey: incremented when draft content is reloaded from the server,
+   * forcing PlateMarkdownEditor to unmount/remount with fresh markdown.
+   */
+  const [resetKey, setResetKey] = useState(0);
 
+  /* Keyboard shortcuts: Cmd+S → commit, Cmd+Shift+S → save draft */
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       const isSaveKey =
@@ -90,244 +49,121 @@ export const DraftWorkspace = ({
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [onCommitDraft, onSaveDraft]);
 
-  const focusTextarea = (selectionStart?: number, selectionEnd?: number) => {
-    window.requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      textarea.focus();
-      if (selectionStart !== undefined && selectionEnd !== undefined) {
-        textarea.setSelectionRange(selectionStart, selectionEnd);
-      }
-    });
-  };
-
-  const handleAssetInput = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    await onUploadAsset(file);
-    event.target.value = '';
-  };
-
-  const applyInlineInsertion = (before: string, after = '') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const result = insertAroundSelection(
-      draftState.bodyMarkdown,
-      textarea.selectionStart,
-      textarea.selectionEnd,
-      before,
-      after,
-    );
-
-    onEditorChange('bodyMarkdown', result.nextValue);
-    focusTextarea(result.nextSelectionStart, result.nextSelectionEnd);
-  };
-
-  const applyBlockInsertion = (block: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const result = insertBlock(
-      draftState.bodyMarkdown,
-      textarea.selectionStart,
-      textarea.selectionEnd,
-      block,
-    );
-
-    onEditorChange('bodyMarkdown', result.nextValue);
-    focusTextarea(result.nextSelectionStart, result.nextSelectionEnd);
+  const handleReloadDraft = async () => {
+    await onReloadDraft();
+    setResetKey((k) => k + 1);
   };
 
   const handleDiscardDraft = async () => {
     const confirmed = window.confirm(
-      'Discard the current draft and return to the formal content view?',
+      '确认丢弃当前草稿并返回正式内容视图？',
     );
     if (!confirmed) return;
     await onDiscardDraft();
   };
 
-  return (
-    <div className="admin-stack-gap">
-      <div className="admin-section-heading admin-section-row">
-        <div>
-          <div className="panel-label">Draft Workspace</div>
-          <h2 className="page-title">{node.name}</h2>
-          <p className="admin-copy">
-            This draft is based on the current {formalStatus} formal version. Commit creates a new formal version; publish is separate.
-          </p>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>加载草稿中...</span>
+      </div>
+    );
+  }
 
-        <div className="admin-action-row">
-          <button type="button" className="admin-button" onClick={() => void onBackToContent()}>
-            Back to Content
-          </button>
-          <button type="button" className="admin-button" onClick={() => void onReloadDraft()}>
-            Reload Draft
-          </button>
-          <button type="button" className="admin-button" onClick={() => void onSaveDraft()}>
-            Save Draft
-          </button>
-          <button type="button" className="admin-button admin-button-primary" onClick={() => void onCommitDraft()}>
-            Commit
-          </button>
-          <button type="button" className="admin-button admin-button-danger" onClick={() => void handleDiscardDraft()}>
-            Discard Draft
-          </button>
+  if (error) {
+    return (
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,59,48,0.06)' }}>
+        <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Action bar */}
+      <div className="flex items-center justify-between">
+        <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
+          草稿工作区 · 基于{formalStatus}版本
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <ActionBtn label="← 返回" onClick={() => void onBackToContent()} />
+          <ActionBtn label="刷新" onClick={() => void handleReloadDraft()} />
+          <ActionBtn label="保存" onClick={() => void onSaveDraft()} />
+          <ActionBtn label="提交" primary onClick={() => void onCommitDraft()} />
+          <ActionBtn label="丢弃" danger onClick={() => void handleDiscardDraft()} />
         </div>
       </div>
 
-      {loading ? (
-        <div className="admin-empty-state">Loading draft workspace...</div>
-      ) : error ? (
-        <div className="admin-inline-error">{error}</div>
-      ) : (
-        <>
-          {draftInfo ? <div className="admin-inline-note">{draftInfo}</div> : null}
-          {actionMessage ? <div className="admin-inline-success">{actionMessage}</div> : null}
-          {(isDirty || isAutosaving || lastDraftSavedAt || autosaveError) && (
-            <div className="admin-inline-note">
-              <div className="admin-inline-wrap">
-                <span>{isAutosaving ? 'Autosaving...' : isDirty ? 'Unsaved draft changes' : 'Draft synced'}</span>
-                {lastDraftSavedAt ? <span>Last draft {new Date(lastDraftSavedAt).toLocaleString('zh-CN')}</span> : null}
-                <span>Ctrl/Cmd + S commit �� Ctrl/Cmd + Shift + S save draft</span>
-              </div>
-              {autosaveError ? <p className="admin-error-copy">{autosaveError}</p> : null}
-            </div>
+      {/* Status bar */}
+      {(isDirty || isAutosaving || lastDraftSavedAt || autosaveError || draftInfo || actionMessage) && (
+        <div className="flex flex-wrap items-center gap-3" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
+          {isAutosaving && <StatusDot color="var(--mark-blue)" label="自动保存中..." />}
+          {isDirty && !isAutosaving && <StatusDot color="var(--mark-red)" label="有未保存的更改" />}
+          {!isDirty && !isAutosaving && lastDraftSavedAt && <StatusDot color="var(--mark-green)" label="已同步" />}
+          {lastDraftSavedAt && (
+            <span>上次保存 {new Date(lastDraftSavedAt).toLocaleString('zh-CN')}</span>
           )}
-
-          <EditorShell
-            sidePanel={
-              <>
-                <section className="admin-side-section">
-                  <div className="panel-label">Draft Status</div>
-                  <div className="admin-note-card">
-                    <div className="admin-note-line">
-                      <span>Persisted draft</span>
-                      <strong>{draftPresence.exists ? 'yes' : 'no'}</strong>
-                    </div>
-                    <div className="admin-note-line is-wrap">
-                      <span>Saved at</span>
-                      <strong>{draftPresence.savedAt ? new Date(draftPresence.savedAt).toLocaleString('zh-CN') : '--'}</strong>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="admin-side-section">
-                  <div className="panel-label">Assets</div>
-                  <p className="admin-copy">
-                    Draft assets write into the same content directory. Inserted paths stay under ./assets/.
-                  </p>
-                  <label className="admin-upload-box">
-                    Select File
-                    <input type="file" className="hidden" onChange={(event) => void handleAssetInput(event)} />
-                  </label>
-                  <div className="admin-side-list">
-                    {assetsLoading ? (
-                      <div className="admin-empty-state compact">Loading assets...</div>
-                    ) : assets.length === 0 ? (
-                      <div className="admin-empty-state compact">No assets yet.</div>
-                    ) : (
-                      assets.map((asset) => (
-                        <div key={asset.path} className="admin-side-card">
-                          <div className="admin-side-title">{asset.fileName}</div>
-                          <div className="admin-side-mono">{asset.path}</div>
-                          <div className="admin-side-caption">{asset.type} �� {asset.size} bytes</div>
-                          <button
-                            type="button"
-                            className="admin-button"
-                            onClick={() => {
-                              onInsertAsset(asset.path);
-                              focusTextarea();
-                            }}
-                          >
-                            Insert
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
-              </>
-            }
-          >
-            <div className="admin-meta-grid">
-              <label className="admin-field">
-                <span className="admin-meta-label">Title</span>
-                <input
-                  type="text"
-                  value={draftState.title}
-                  onChange={(event) => onEditorChange('title', event.target.value)}
-                  className="admin-input"
-                />
-              </label>
-              <label className="admin-field">
-                <span className="admin-meta-label">Change Type</span>
-                <select
-                  value={draftState.changeType}
-                  onChange={(event) => onEditorChange('changeType', event.target.value as ContentChangeType)}
-                  className="admin-input"
-                >
-                  <option value="patch">patch</option>
-                  <option value="major">major</option>
-                </select>
-              </label>
-            </div>
-
-            <label className="admin-field">
-              <span className="admin-meta-label">Summary</span>
-              <textarea
-                value={draftState.summary}
-                onChange={(event) => onEditorChange('summary', event.target.value)}
-                className="admin-textarea"
-              />
-            </label>
-
-            <label className="admin-field">
-              <span className="admin-meta-label">Change Note</span>
-              <input
-                type="text"
-                value={draftState.changeNote}
-                onChange={(event) => onEditorChange('changeNote', event.target.value)}
-                className="admin-input"
-              />
-            </label>
-
-            <div className="admin-detail-card">
-              <div className="admin-detail-header">
-                <div className="admin-meta-label">Markdown Body</div>
-                <div className="admin-side-caption">{draftState.bodyMarkdown.length} chars</div>
-              </div>
-              <div className="admin-toolbar">
-                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('# ')}>
-                  H1
-                </button>
-                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('## ')}>
-                  H2
-                </button>
-                <button type="button" className="admin-tool" onClick={() => applyInlineInsertion('**', '**')}>
-                  Bold
-                </button>
-                <button type="button" className="admin-tool" onClick={() => applyInlineInsertion('`', '`')}>
-                  Inline Code
-                </button>
-                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('- ')}>
-                  List
-                </button>
-                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('```ts\n\n```')}>
-                  Code Block
-                </button>
-                <button type="button" className="admin-tool" onClick={() => applyBlockInsertion('![](./assets/example.png)')}>
-                  Image
-                </button>
-              </div>
-              <MarkdownEditorInput ref={textareaRef} value={draftState.bodyMarkdown} onChange={(value) => onEditorChange('bodyMarkdown', value)} />
-            </div>
-          </EditorShell>
-        </>
+          <span style={{ opacity: 0.5 }}>⌘S 提交 · ⌘⇧S 保存</span>
+          {autosaveError && <span style={{ color: 'var(--mark-red)' }}>{autosaveError}</span>}
+          {draftInfo && <span>{draftInfo}</span>}
+          {actionMessage && <span style={{ color: 'var(--mark-green)' }}>{actionMessage}</span>}
+        </div>
       )}
+
+      {/* Inline title — Ghost/Notion style, no label/border/background */}
+      <input
+        type="text"
+        value={draftState.title}
+        onChange={(e) => onEditorChange('title', e.target.value)}
+        placeholder="无标题"
+        className="w-full border-none bg-transparent font-bold outline-none placeholder:text-[var(--ink-ghost)]"
+        style={{ color: 'var(--ink)', fontSize: 'var(--text-5xl)', letterSpacing: '-0.025em', lineHeight: 1.2 }}
+      />
+
+      {/* Plate rich-text editor — immediately after title */}
+      <PlateMarkdownEditor
+        key={resetKey}
+        initialMarkdown={draftState.bodyMarkdown}
+        onChange={(md) => onEditorChange('bodyMarkdown', md)}
+        charCount={draftState.bodyMarkdown.length}
+      />
     </div>
   );
 };
+
+/* ---------- Shared primitives ---------- */
+
+function ActionBtn({
+  label,
+  primary,
+  danger,
+  onClick,
+}: {
+  label: string;
+  primary?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="transition-colors duration-150"
+      style={{
+        color: danger ? 'var(--mark-red)' : primary ? 'var(--ink)' : 'var(--ink-faded)',
+        fontSize: 'var(--text-xs)',
+        fontWeight: primary ? 600 : 400,
+      }}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+}
+
+function StatusDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}

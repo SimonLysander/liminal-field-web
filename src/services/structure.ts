@@ -93,4 +93,10 @@ export const structureApi = {
     }),
   deleteNode: (id: string) =>
     request<void>(`/structure-nodes/${id}`, { method: 'DELETE' }),
+
+  reorderSiblings: (parentId: string | null, nodeIds: string[]) =>
+    request<void>('/structure-nodes/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ parentId, nodeIds }),
+    }),
 };

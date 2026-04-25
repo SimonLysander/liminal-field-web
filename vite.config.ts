@@ -5,26 +5,7 @@ import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    react(),
-    {
-      name: 'inject-build-info',
-      config(_, { command }) {
-        const isBuild = command === 'build';
-        return {
-          define: {
-            'import.meta.env.VITE_BUILD_TIME': JSON.stringify(
-              new Date().toISOString(),
-            ),
-            'import.meta.env.VITE_BUILD_HASH': JSON.stringify(
-              isBuild ? `build-${Date.now().toString(36)}` : 'dev',
-            ),
-          },
-        };
-      },
-    },
-  ],
+  plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

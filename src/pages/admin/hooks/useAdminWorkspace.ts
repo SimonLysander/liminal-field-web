@@ -7,7 +7,10 @@ import type {
 import { structureApi } from '@/services/structure';
 import {
   countNodes,
+  findNodeInTree,
+  getSiblings,
   insertChildInTree,
+  moveNodeInTree,
   parseError,
   removeNodeFromTree,
   updateNodeInTree,
@@ -19,6 +22,7 @@ import {
   type DraftEditorState,
   type ModalState,
   type NodeSubmitPayload,
+  type PreviewState,
   type TreeNode,
   type WorkspaceMode,
   toDraftEditorStateFromDetail,
@@ -56,6 +60,8 @@ export function useAdminWorkspace() {
   >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const totalNodes = useMemo(() => countNodes(tree), [tree]);
   const isDocSelected = selectedNode?.type === 'DOC' && !!selectedNode.contentItemId;
@@ -74,7 +80,7 @@ export function useAdminWorkspace() {
         })),
       );
     } catch (loadError) {
-      setError(parseError(loadError, 'Failed to load navigation tree.'));
+      setError(parseError(loadError, '加载导航树失败'));
     } finally {
       setLoading(false);
     }
@@ -93,7 +99,7 @@ export function useAdminWorkspace() {
       });
       return draft;
     } catch (draftError) {
-      const message = parseError(draftError, 'Failed to load draft.');
+      const message = parseError(draftError, '加载草稿失败');
       if (!message.includes('404')) {
         throw draftError;
       }
@@ -131,7 +137,7 @@ export function useAdminWorkspace() {
         setAutosaveError('');
       } catch (workspaceError) {
         setContentError(
-          parseError(workspaceError, 'Failed to load formal content.'),
+          parseError(workspaceError, '加载正式内容失败'),
         );
         setFormalContent(EMPTY_FORMAL_CONTENT);
         setDraftState(EMPTY_DRAFT_EDITOR_STATE);
@@ -165,6 +171,7 @@ export function useAdminWorkspace() {
       setLastDraftSavedAt('');
       setAutosaveError('');
       setHistoryLoading(false);
+      setPreview(null);
       return;
     }
 
@@ -243,7 +250,7 @@ export function useAdminWorkspace() {
     if (createPayload.type === 'DOC') {
       const docCreate = payload.docCreate;
       if (!docCreate) {
-        throw new Error('DOC nodes must be created with a content item.');
+        throw new Error('DOC 节点必须关联内容项');
       }
 
       const createdContent = await contentItemsApi.create({
@@ -251,7 +258,7 @@ export function useAdminWorkspace() {
         summary: docCreate.summary,
         status: 'committed',
         bodyMarkdown: `# ${docCreate.title}\n`,
-        changeNote: 'Initial content',
+        changeNote: '初始内容',
         changeType: 'major',
       });
       contentItemId = createdContent.id;
@@ -296,7 +303,7 @@ export function useAdminWorkspace() {
 
       if (overwrite && draftPresence.exists) {
         const confirmed = window.confirm(
-          'Overwrite the existing draft with the current formal version?',
+          '是否覆盖已有草稿？',
         );
         if (!confirmed) return;
       }
@@ -306,8 +313,8 @@ export function useAdminWorkspace() {
         summary: formalContent.latestVersion.summary,
         bodyMarkdown: formalContent.bodyMarkdown,
         changeNote: overwrite
-          ? 'Overwrite draft from current formal version'
-          : 'Draft from current formal version',
+          ? '从正式版本覆盖草稿'
+          : '从正式版本创建草稿',
       });
 
       setDraftState(toDraftEditorStateFromDraft(draft));
@@ -317,7 +324,7 @@ export function useAdminWorkspace() {
       });
       setLastDraftSavedAt(draft.savedAt);
       setDraftInfo(
-        `Draft workspace ready from ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`,
+        `草稿工作区已就绪 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`,
       );
       setActionMessage('');
       setAutosaveError('');
@@ -348,14 +355,14 @@ export function useAdminWorkspace() {
       });
       setLastDraftSavedAt(draft.savedAt);
       setDraftInfo(
-        `Resumed draft from ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`,
+        `已恢复草稿 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`,
       );
       setActionMessage('');
       setAutosaveError('');
       setIsDirty(false);
       setWorkspaceMode('draft');
     } catch (draftError) {
-      setContentError(parseError(draftError, 'Failed to resume draft.'));
+      setContentError(parseError(draftError, '恢复草稿失败'));
     } finally {
       setContentLoading(false);
     }
@@ -391,7 +398,7 @@ export function useAdminWorkspace() {
       }
 
       setDraftInfo(
-        `Draft saved at ${new Date(draft.savedAt).toLocaleString('zh-CN')}.`,
+        `草稿已保存 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`,
       );
       setActionMessage('');
       setIsAutosaving(false);
@@ -429,7 +436,7 @@ export function useAdminWorkspace() {
     setAutosaveError('');
     setWorkspaceMode('formal');
     setActionMessage(
-      `New committed version created at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
+      `新版本已提交 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`,
     );
     setHistory(await contentItemsApi.getHistory(selectedNode.contentItemId));
     setAssets(await contentItemsApi.listAssets(selectedNode.contentItemId));
@@ -467,7 +474,7 @@ export function useAdminWorkspace() {
     setAutosaveError('');
     setIsDirty(false);
     setWorkspaceMode('formal');
-    setActionMessage('Draft discarded.');
+    setActionMessage('草稿已丢弃');
   }, [formalContent, selectedNode?.contentItemId]);
 
   const publishContent = useCallback(async () => {
@@ -478,14 +485,14 @@ export function useAdminWorkspace() {
       summary: formalContent.latestVersion.summary,
       status: 'published',
       bodyMarkdown: formalContent.bodyMarkdown,
-      changeNote: 'Publish committed version',
+      changeNote: '发布已提交版本',
       changeType: 'patch',
       action: 'publish',
     });
 
     setFormalContent(toFormalContentState(saved));
     setActionMessage(
-      `Content published at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
+      `内容已发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`,
     );
   }, [
     formalContent.bodyMarkdown,
@@ -502,14 +509,14 @@ export function useAdminWorkspace() {
       summary: formalContent.latestVersion.summary,
       status: 'committed',
       bodyMarkdown: formalContent.bodyMarkdown,
-      changeNote: 'Unpublish current version',
+      changeNote: '取消发布当前版本',
       changeType: 'patch',
       action: 'unpublish',
     });
 
     setFormalContent(toFormalContentState(saved));
     setActionMessage(
-      `Content unpublished at ${new Date(saved.updatedAt).toLocaleString('zh-CN')}.`,
+      `已取消发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`,
     );
   }, [
     formalContent.bodyMarkdown,
@@ -517,6 +524,70 @@ export function useAdminWorkspace() {
     formalContent.latestVersion.title,
     selectedNode?.contentItemId,
   ]);
+
+  const previewVersion = useCallback(
+    async (commitHash: string) => {
+      if (!selectedNode?.contentItemId) return;
+
+      /* Already previewing this version */
+      if (preview?.commitHash === commitHash) return;
+
+      /* If clicking the latest version, just exit preview */
+      if (commitHash === formalContent.latestVersion.commitHash) {
+        setPreview(null);
+        return;
+      }
+
+      setPreviewLoading(true);
+      try {
+        const detail = await contentItemsApi.getByVersion(
+          selectedNode.contentItemId,
+          commitHash,
+        );
+        setPreview({
+          commitHash,
+          title: detail.title,
+          bodyMarkdown: detail.bodyMarkdown,
+          committedAt: detail.updatedAt,
+        });
+      } catch (previewError) {
+        setContentError(parseError(previewError, '加载版本内容失败'));
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [selectedNode?.contentItemId, preview?.commitHash, formalContent.latestVersion.commitHash],
+  );
+
+  const exitPreview = useCallback(() => {
+    setPreview(null);
+  }, []);
+
+  const publishPreview = useCallback(async () => {
+    if (!selectedNode?.contentItemId || !preview) return;
+
+    const confirmed = window.confirm(
+      `发布版本 ${preview.commitHash.slice(0, 8)} ？`,
+    );
+    if (!confirmed) return;
+
+    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+      title: preview.title,
+      summary: formalContent.latestVersion.summary,
+      status: 'published',
+      bodyMarkdown: preview.bodyMarkdown,
+      changeNote: `发布版本 ${preview.commitHash.slice(0, 8)}`,
+      changeType: 'patch',
+      action: 'publish',
+    });
+
+    setFormalContent(toFormalContentState(saved));
+    setPreview(null);
+    setActionMessage(
+      `版本 ${preview.commitHash.slice(0, 8)} 已发布。`,
+    );
+    setHistory(await contentItemsApi.getHistory(selectedNode.contentItemId));
+  }, [selectedNode?.contentItemId, preview, formalContent.latestVersion.summary]);
 
   const uploadAsset = useCallback(
     async (file: File) => {
@@ -529,12 +600,52 @@ export function useAdminWorkspace() {
           selectedNode.contentItemId,
         );
         setAssets(nextAssets);
-        setActionMessage(`Uploaded asset: ${file.name}.`);
+        setActionMessage(`已上传附件：${file.name}`);
       } finally {
         setAssetsLoading(false);
       }
     },
     [selectedNode?.contentItemId],
+  );
+
+  const handleMoveNode = useCallback(
+    (nodeId: string, targetNodeId: string, position: 'before' | 'after' | 'inside') => {
+      /* Optimistic update: move in local tree immediately */
+      setTree((current) => {
+        const updated = moveNodeInTree(current, nodeId, targetNodeId, position);
+
+        /* Determine new parentId and sibling order for API call */
+        let newParentId: string | null = null;
+        if (position === 'inside') {
+          newParentId = targetNodeId;
+        } else {
+          const [siblings] = getSiblings(updated, nodeId);
+          const targetNode = findNodeInTree(updated, targetNodeId);
+          if (targetNode) {
+            /* Find parent by checking which list contains targetNodeId in the updated tree */
+            const [, parentId] = getSiblings(updated, targetNodeId);
+            newParentId = parentId;
+          }
+          /* Collect sibling IDs in order for batch reorder */
+          const siblingIds = siblings.map((s) => s.id);
+          void structureApi.reorderSiblings(newParentId, siblingIds).catch(() => {
+            /* Revert on failure by reloading */
+            void loadRoots();
+          });
+          return updated;
+        }
+
+        /* For 'inside' moves, update parentId via single-node update */
+        void structureApi
+          .updateNode(nodeId, { parentId: newParentId ?? undefined })
+          .catch(() => {
+            void loadRoots();
+          });
+
+        return updated;
+      });
+    },
+    [loadRoots],
   );
 
   const insertAssetPath = useCallback((path: string) => {
@@ -564,7 +675,7 @@ export function useAdminWorkspace() {
       // versions remain clearly distinct from the working copy.
       void saveDraft({ silent: true }).catch((autosaveFailure) => {
         setIsAutosaving(false);
-        setAutosaveError(parseError(autosaveFailure, 'Autosave failed.'));
+        setAutosaveError(parseError(autosaveFailure, '自动保存失败'));
       });
     }, 1500);
 
@@ -621,6 +732,12 @@ export function useAdminWorkspace() {
     discardDraft,
     publishContent,
     unpublishContent,
+    preview,
+    previewLoading,
+    previewVersion,
+    exitPreview,
+    publishPreview,
+    handleMoveNode,
     uploadAsset,
     insertAssetPath,
     setWorkspaceMode,

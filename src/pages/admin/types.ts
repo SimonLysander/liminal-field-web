@@ -2,10 +2,8 @@ import type {
   ContentChangeType,
   ContentDetail,
   ContentVersion,
-  ContentHistoryEntry,
   ContentStatus,
   EditorDraft,
-  ListedAsset,
 } from '@/services/content-items';
 import type {
   CreateStructureNodeDto,
@@ -63,23 +61,26 @@ export type NodeSubmitPayload = {
   docCreate?: DocCreateState;
 };
 
+export type PreviewState = {
+  commitHash: string;
+  title: string;
+  bodyMarkdown: string;
+  committedAt: string;
+};
+
 export type ContentVersionViewProps = {
   node: TreeNode;
   content: FormalContentState;
   loading: boolean;
   error: string;
-  history: ContentHistoryEntry[];
-  historyLoading: boolean;
-  assets: ListedAsset[];
-  assetsLoading: boolean;
-  draftPresence: DraftPresence;
   actionMessage: string;
+  preview: PreviewState | null;
+  previewLoading: boolean;
   onReload: () => Promise<void>;
   onPublish: () => Promise<void>;
   onUnpublish: () => Promise<void>;
-  onCreateDraft: () => Promise<void>;
-  onResumeDraft: () => Promise<void>;
-  onOverwriteDraft: () => Promise<void>;
+  onExitPreview: () => void;
+  onPublishPreview: () => Promise<void>;
 };
 
 export type DraftWorkspaceProps = {
@@ -94,8 +95,6 @@ export type DraftWorkspaceProps = {
   isAutosaving: boolean;
   lastDraftSavedAt: string;
   autosaveError: string;
-  assets: ListedAsset[];
-  assetsLoading: boolean;
   actionMessage: string;
   onReloadDraft: () => Promise<void>;
   onBackToContent: () => void;
@@ -106,8 +105,6 @@ export type DraftWorkspaceProps = {
   onSaveDraft: () => Promise<void>;
   onCommitDraft: () => Promise<void>;
   onDiscardDraft: () => Promise<void>;
-  onUploadAsset: (file: File) => Promise<void>;
-  onInsertAsset: (path: string) => void;
 };
 
 export const EMPTY_FORMAL_CONTENT: FormalContentState = {
@@ -128,7 +125,7 @@ export const EMPTY_DRAFT_EDITOR_STATE: DraftEditorState = {
   title: '',
   summary: '',
   bodyMarkdown: '',
-  changeNote: 'Update content',
+  changeNote: '更新内容',
   changeType: 'patch',
 };
 
@@ -160,7 +157,7 @@ export function toDraftEditorStateFromDetail(
     title: detail.latestVersion.title,
     summary: detail.latestVersion.summary,
     bodyMarkdown: detail.bodyMarkdown,
-    changeNote: 'Update content',
+    changeNote: '更新内容',
     changeType: 'patch',
   };
 }

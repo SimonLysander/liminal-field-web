@@ -191,6 +191,8 @@ export const contentItemsApi = {
     request<void>(`/contents/${id}/draft`, {
       method: 'DELETE',
     }),
+  getByVersion: (id: string, commitHash: string) =>
+    request<ContentDetail>(`/contents/${id}/versions/${commitHash}`),
   getHistory: (id: string) =>
     request<ContentHistoryEntry[]>(`/contents/${id}/history`),
   listAssets: (id: string) => request<ListedAsset[]>(`/contents/${id}/assets`),
