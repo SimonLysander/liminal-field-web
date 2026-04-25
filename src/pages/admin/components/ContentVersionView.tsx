@@ -1,241 +1,243 @@
+/*
+ * ContentVersionView — Read-only content preview with version comparison
+ *
+ * Markdown body container uses rounded-[10px] (radius-lg tier).
+ * Preview bar uses mark-blue with 8% opacity background.
+ * All font sizes use type scale variables (--text-2xs through --text-4xl).
+ * TextLink buttons: pure text style (no border/background), hover changes
+ * color from ink-faded to ink for a minimal, Apple-inspired interaction.
+ */
+
 import type { ContentStatus } from '@/services/content-items';
-import { EditorShell } from './EditorShell';
 import type { ContentVersionViewProps } from '../types';
 
-function getReadableHistoryTitle(message: string, action: string) {
-  const [, note] = message.split(' | ');
-  if (note?.trim()) {
-    return note.trim();
-  }
+const statusLabel: Record<string, string> = {
+  published: '已发布',
+  committed: '已提交',
+  draft: '草稿',
+};
 
-  if (action === 'commit') {
-    return 'Formal version commit';
-  }
-
-  return 'Formal version update';
-}
-
-const StatusBadge = ({ status }: { status: ContentStatus }) => (
-  <span className={`admin-pill ${status === 'published' ? 'is-published' : 'is-committed'}`}>
-    {status}
-  </span>
-);
+const StatusPill = ({ status }: { status: ContentStatus }) => {
+  const isPublished = status === 'published';
+  return (
+    <span
+      className="inline-flex items-center gap-[5px] rounded-full px-2.5 py-[3px] font-medium"
+      style={{
+        fontSize: 'var(--text-2xs)',
+        background: isPublished ? 'rgba(52,199,89,0.1)' : 'var(--accent-soft)',
+        color: isPublished ? 'var(--mark-green)' : 'var(--ink-faded)',
+      }}
+    >
+      <span
+        className="h-[5px] w-[5px] rounded-full"
+        style={{ background: 'currentColor' }}
+      />
+      {statusLabel[status] ?? status}
+    </span>
+  );
+};
 
 export const ContentVersionView = ({
   node,
   content,
   loading,
   error,
-  history,
-  historyLoading,
-  assets,
-  assetsLoading,
-  draftPresence,
   actionMessage,
+  preview,
+  previewLoading,
   onReload,
   onPublish,
   onUnpublish,
-  onCreateDraft,
-  onResumeDraft,
-  onOverwriteDraft,
+  onExitPreview,
+  onPublishPreview,
 }: ContentVersionViewProps) => {
-  const latestVersion = content.latestVersion;
-  const publishedVersion = content.publishedVersion;
-
   const handlePublish = async () => {
     const confirmed = window.confirm(
       content.status === 'published' && content.hasUnpublishedChanges
-        ? 'Publish the latest committed version now? It will replace the current public version.'
-        : 'Publish this committed version now? It will become visible on public pages.',
+        ? '立即发布最新的已提交版本？'
+        : '立即发布此已提交版本？',
     );
     if (!confirmed) return;
     await onPublish();
   };
 
   const handleUnpublish = async () => {
-    const confirmed = window.confirm(
-      'Unpublish this document now? It will be removed from public pages.',
-    );
+    const confirmed = window.confirm('立即取消发布此文档？');
     if (!confirmed) return;
     await onUnpublish();
   };
 
-  return (
-    <div className="admin-stack-gap">
-      <div className="admin-section-heading admin-section-row">
-        <div>
-          <div className="panel-label">Formal Version View</div>
-          <div className="admin-heading-line">
-            <h2 className="page-title">{node.name}</h2>
-            <StatusBadge status={content.status} />
-          </div>
-          <p className="admin-copy">
-            Formal versions are read-only here. Drafts are created in a separate workspace.
-          </p>
-          {content.status === 'published' && content.hasUnpublishedChanges ? (
-            <p className="admin-warning-copy">
-              A newer committed version exists. Public pages still serve {publishedVersion?.commitHash.slice(0, 8) ?? '--'}.
-            </p>
-          ) : null}
-        </div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>加载内容中...</span>
+      </div>
+    );
+  }
 
-        <div className="admin-action-row">
-          <button type="button" className="admin-button" onClick={() => void onReload()}>
-            Reload
-          </button>
-          {content.status === 'published' ? (
+  if (error) {
+    return (
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,59,48,0.06)' }}>
+        <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      {node.parentId && (
+        <div className="flex items-center gap-1.5" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
+          <span style={{ opacity: 0.6 }}>...</span>
+          <span style={{ opacity: 0.4 }}>/</span>
+          <span style={{ color: 'var(--ink-faded)' }}>{node.name}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h2
+            className="font-bold"
+            style={{ color: 'var(--ink)', fontSize: 'var(--text-4xl)', letterSpacing: '-0.025em' }}
+          >
+            {node.name}
+          </h2>
+          {!preview && (
             <>
-              {content.hasUnpublishedChanges ? (
-                <button type="button" className="admin-button admin-button-primary" onClick={() => void handlePublish()}>
-                  Publish Latest
-                </button>
-              ) : null}
-              <button type="button" className="admin-button admin-button-danger" onClick={() => void handleUnpublish()}>
-                Unpublish
-              </button>
+              <div className="mt-2 flex items-center gap-2.5">
+                <StatusPill status={content.status} />
+                <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
+                  只读
+                </span>
+              </div>
+              {content.status === 'published' && content.hasUnpublishedChanges && (
+                <p className="mt-2" style={{ color: 'var(--mark-red)', fontSize: 'var(--text-xs)' }}>
+                  存在更新的已提交版本。公开页面仍在使用 {content.publishedVersion?.commitHash.slice(0, 8) ?? '--'}。
+                </p>
+              )}
             </>
-          ) : (
-            <button type="button" className="admin-button admin-button-primary" onClick={() => void handlePublish()}>
-              Publish
-            </button>
           )}
         </div>
+        {!preview && (
+          <div className="flex items-center gap-4 pt-1">
+            <TextLink label="刷新" onClick={() => void onReload()} />
+            {content.status === 'published' ? (
+              <>
+                {content.hasUnpublishedChanges && (
+                  <TextLink label="发布最新" onClick={() => void handlePublish()} />
+                )}
+                <TextLink label="取消发布" danger onClick={() => void handleUnpublish()} />
+              </>
+            ) : (
+              <TextLink label="发布" onClick={() => void handlePublish()} />
+            )}
+          </div>
+        )}
       </div>
 
-      {loading ? (
-        <div className="admin-empty-state">Loading content...</div>
-      ) : error ? (
-        <div className="admin-inline-error">{error}</div>
-      ) : (
-        <>
-          {actionMessage ? <div className="admin-inline-success">{actionMessage}</div> : null}
-
-          <EditorShell
-            sidePanel={
-              <>
-                <section className="admin-side-section">
-                  <div className="panel-label">Draft Workspace</div>
-                  <p className="admin-copy">
-                    Formal content stays locked here. Editing only begins after you create or resume a draft.
-                  </p>
-
-                  {draftPresence.exists ? (
-                    <div className="admin-note-card">
-                      <div className="admin-note-line">
-                        <span>Existing draft</span>
-                        <strong>yes</strong>
-                      </div>
-                      <div className="admin-note-line is-wrap">
-                        <span>Last saved</span>
-                        <strong>
-                          {draftPresence.savedAt ? new Date(draftPresence.savedAt).toLocaleString('zh-CN') : '--'}
-                        </strong>
-                      </div>
-                      <div className="admin-side-actions">
-                        <button type="button" className="admin-button" onClick={() => void onResumeDraft()}>
-                          Resume Draft
-                        </button>
-                        <button type="button" className="admin-button admin-button-danger" onClick={() => void onOverwriteDraft()}>
-                          Overwrite Draft
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button type="button" className="admin-button admin-button-primary" onClick={() => void onCreateDraft()}>
-                      Create Draft
-                    </button>
-                  )}
-                </section>
-
-                <section className="admin-side-section">
-                  <div className="panel-label">Assets</div>
-                  <div className="admin-side-list">
-                    {assetsLoading ? (
-                      <div className="admin-empty-state compact">Loading assets...</div>
-                    ) : assets.length === 0 ? (
-                      <div className="admin-empty-state compact">No assets yet.</div>
-                    ) : (
-                      assets.map((asset) => (
-                        <div key={asset.path} className="admin-side-card">
-                          <div className="admin-side-title">{asset.fileName}</div>
-                          <div className="admin-side-mono">{asset.path}</div>
-                          <div className="admin-side-caption">
-                            {asset.type} �� {asset.size} bytes
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
-
-                <section className="admin-side-section">
-                  <div className="panel-label">History</div>
-                  <p className="admin-copy">Read-only formal version history from the knowledge-base repo.</p>
-                  <div className="admin-side-list">
-                    {historyLoading ? (
-                      <div className="admin-empty-state compact">Loading history...</div>
-                    ) : history.length === 0 ? (
-                      <div className="admin-empty-state compact">No formal versions yet.</div>
-                    ) : (
-                      history.map((entry) => (
-                        <div key={entry.commitHash} className="admin-history-card">
-                          <div className="admin-side-title">{getReadableHistoryTitle(entry.message, entry.action)}</div>
-                          <div className="admin-side-caption uppercase">{entry.action}</div>
-                          <div className="admin-side-mono">{entry.commitHash.slice(0, 8)}</div>
-                          <div className="admin-side-caption">{new Date(entry.committedAt).toLocaleString('zh-CN')}</div>
-                          <div className="admin-side-caption">{entry.authorName} �� {entry.authorEmail}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
-              </>
-            }
-          >
-            <div className="admin-meta-grid">
-              <div className="admin-meta-card">
-                <div className="admin-meta-label">Latest Commit</div>
-                <div className="admin-mono">{latestVersion.commitHash.slice(0, 8) || '--'}</div>
-              </div>
-              <div className="admin-meta-card">
-                <div className="admin-meta-label">Published Commit</div>
-                <div className="admin-mono">{publishedVersion?.commitHash.slice(0, 8) ?? '--'}</div>
-              </div>
-            </div>
-
-            <div className="admin-meta-grid">
-              <div className="admin-meta-card">
-                <div className="admin-meta-label">Latest Version Title</div>
-                <div>{latestVersion.title || '--'}</div>
-              </div>
-              <div className="admin-meta-card">
-                <div className="admin-meta-label">Published Version Title</div>
-                <div>{publishedVersion?.title || '--'}</div>
-              </div>
-            </div>
-
-            <div className="admin-detail-card">
-              <div className="admin-meta-label">Latest Version Summary</div>
-              <p className="admin-detail-copy">{latestVersion.summary || '--'}</p>
-            </div>
-
-            {publishedVersion ? (
-              <div className="admin-detail-card">
-                <div className="admin-meta-label">Published Version Summary</div>
-                <p className="admin-detail-copy">{publishedVersion.summary || '--'}</p>
-              </div>
-            ) : null}
-
-            <div className="admin-detail-card is-body">
-              <div className="admin-detail-header">
-                <div className="admin-meta-label">Markdown Body</div>
-                <div className="admin-side-caption">Updated {new Date(content.updatedAt).toLocaleString('zh-CN')}</div>
-              </div>
-              <pre className="admin-markdown-preview">{content.bodyMarkdown || '--'}</pre>
-            </div>
-          </EditorShell>
-        </>
+      {/* Preview bar */}
+      {preview && (
+        <div
+          className="flex items-center justify-between rounded-lg px-4 py-2.5"
+          style={{ background: 'rgba(10,132,255,0.08)', border: '1px solid rgba(10,132,255,0.15)' }}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className="h-[6px] w-[6px] rounded-full"
+              style={{ background: 'var(--mark-blue)' }}
+            />
+            <span className="font-medium" style={{ color: 'var(--mark-blue)', fontSize: 'var(--text-xs)' }}>
+              预览版本
+            </span>
+            <span
+              style={{ color: 'var(--mark-blue)', opacity: 0.7, fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)' }}
+            >
+              {preview.commitHash.slice(0, 8)}
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <TextLink label="发布此版本" onClick={() => void onPublishPreview()} />
+            <TextLink label="返回最新" onClick={onExitPreview} />
+          </div>
+        </div>
       )}
+
+      {previewLoading && (
+        <div className="flex items-center justify-center py-8">
+          <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>加载版本内容中...</span>
+        </div>
+      )}
+
+      {actionMessage && !preview && (
+        <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(52,199,89,0.06)' }}>
+          <p style={{ color: 'var(--mark-green)', fontSize: 'var(--text-xs)' }}>{actionMessage}</p>
+        </div>
+      )}
+
+      {/* Markdown body */}
+      <div
+        className="overflow-hidden rounded-[10px]"
+        style={{ border: '1px solid var(--box-border)' }}
+      >
+        <div
+          className="flex items-center justify-between px-4 py-2.5"
+          style={{
+            background: preview ? 'rgba(10,132,255,0.04)' : 'var(--shelf)',
+            borderBottom: '1px solid var(--box-border)',
+          }}
+        >
+          <span
+            className="font-semibold uppercase"
+            style={{ color: preview ? 'var(--mark-blue)' : 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.04em' }}
+          >
+            {preview ? '历史版本正文' : '正文'}
+          </span>
+          <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)' }}>
+            {preview
+              ? new Date(preview.committedAt).toLocaleString('zh-CN')
+              : new Date(content.updatedAt).toLocaleString('zh-CN')}
+          </span>
+        </div>
+        <pre
+          className="max-h-[500px] overflow-auto whitespace-pre-wrap p-5 leading-[1.8]"
+          style={{
+            color: 'var(--ink-light)',
+            fontSize: 'var(--text-xs)',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {(preview ? preview.bodyMarkdown : content.bodyMarkdown) || '--'}
+        </pre>
+      </div>
     </div>
   );
 };
+
+/* ---------- Primitives ---------- */
+
+function TextLink({ label, danger, onClick }: { label: string; danger?: boolean; onClick: () => void }) {
+  return (
+    <button
+      className="transition-colors duration-150"
+      style={{
+        color: danger ? 'var(--mark-red)' : 'var(--ink-faded)',
+        fontSize: 'var(--text-xs)',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        padding: '4px 0',
+      }}
+      onMouseEnter={(e) => {
+        if (!danger) e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = danger ? 'var(--mark-red)' : 'var(--ink-faded)';
+      }}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+}
