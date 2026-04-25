@@ -7,7 +7,19 @@
  */
 
 @import "tailwindcss";
-@import "tw-animate-css";
+
+/* Tailwind rounded-* 覆盖 — 统一使用分档圆角系统 */
+@theme {
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+  --radius-4xl: 12px;
+}
 
 /* ========== Design Tokens — Apple-inspired, Monochrome ========== */
 
@@ -56,7 +68,7 @@
   --photo-border: #F5F5F7;
   --omnibar-bg: rgba(255,255,255,0.82);
   --omnibar-shadow: var(--shadow-lg);
-  --sidebar-bg: #F5F5F7;
+  --sidebar-bg: #F2F2F2;
   --bar-bg: rgba(255,255,255,0.8);
   --inset-light: inset 0 1px 0 rgba(255,255,255,0.5);
 }
@@ -114,17 +126,49 @@
   --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
   --font-title: -apple-system, BlinkMacSystemFont, "SF Pro Display",
     "Segoe UI", Helvetica, Arial, sans-serif;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  /*
+   * Border radius — tiered system, px values scale with element size.
+   *
+   * Tier     Size   Components
+   * ──────── ────── ─────────────────────────────────────────────
+   * sm        6px   ActionPill, SideLink buttons, tag pills,
+   *                 nav-item hover, search bar, outline heading,
+   *                 VersionTimeline active item, focus-visible ring
+   * md        8px   Polaroid frame, image area (gallery), content
+   *                 body container (ContentVersionView), info cards
+   * lg       10px   Sidebar card, TreePanel card, editor card,
+   *                 TreeNodeItem hover/selected state, asset cards,
+   *                 draft info box, code blocks (note reader)
+   * xl       12px   NodeFormModal, ConfirmDialog, CommitDialog,
+   *                 AI chat panel, doc-create field group
+   *
+   * The @theme block above maps Tailwind's rounded-* utilities to
+   * these tiers, so e.g. `rounded-lg` = 10px, `rounded-xl` = 12px.
+   */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  /* Type scale — rem-based, scales with html font-size */
+  --text-2xs: 0.6875rem;  /* ~11px */
+  --text-xs: 0.75rem;     /* ~12px */
+  --text-sm: 0.8125rem;   /* ~13px */
+  --text-base: 0.875rem;  /* ~14px */
+  --text-md: 0.9375rem;   /* ~15px */
+  --text-lg: 1rem;        /* ~16px */
+  --text-xl: 1.0625rem;   /* ~17px */
+  --text-2xl: 1.125rem;   /* ~18px */
+  --text-3xl: 1.25rem;    /* ~20px */
+  --text-4xl: 1.375rem;   /* ~22px */
+  --text-5xl: 1.75rem;    /* ~28px */
 }
 
-/* Responsive base font size */
-html { font-size: 16px; }
-@media (max-width: 1024px) { html { font-size: 15px; } }
-@media (max-width: 768px)  { html { font-size: 14px; } }
-@media (max-width: 480px)  { html { font-size: 13px; } }
+/* Responsive base font size — bump from 16→17 for overall readability */
+html { font-size: 17px; }
+@media (max-width: 1024px) { html { font-size: 16px; } }
+@media (max-width: 768px)  { html { font-size: 15px; } }
+@media (max-width: 480px)  { html { font-size: 14px; } }
 
 ::selection {
   background: var(--accent-soft);
@@ -155,6 +199,48 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* Heading scroll offset — compensate for sticky toolbars/headers */
+[data-slate-editor] h1,
+[data-slate-editor] h2,
+[data-slate-editor] h3 {
+  scroll-margin-top: 60px;
+}
+[data-heading-id] {
+  scroll-margin-top: 80px;
+}
+
+/* Plate editor: suppress focus outline on the contentEditable surface */
+[data-slate-editor]:focus-visible,
+[data-slate-editor]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Plate toolbar buttons — pill hover state */
+.plate-toolbar-btn:hover {
+  background: var(--shelf);
+  color: var(--ink);
+}
+
+/* Plate code block: inline code marks inside code blocks should not double-up backgrounds */
+pre code {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Plate editor placeholder — refined ghost text */
+.plate-editor-content [data-slate-placeholder] {
+  color: var(--ink-ghost) !important;
+  opacity: 0.6 !important;
+  font-style: italic;
+}
+
+/* Outline heading hover */
+.outline-heading-btn:hover {
+  background: var(--shelf);
+  color: var(--ink) !important;
+}
+
 button {
   border: none;
   background: none;
@@ -164,6 +250,19 @@ button {
 }
 
 a { color: inherit; text-decoration: none; }
+
+/*
+ * Theme transition: only active during the ~0.5s switch window.
+ * Covers background, color, border, box-shadow, and fill/stroke for SVG icons.
+ */
+body.theme-transitioning,
+body.theme-transitioning *,
+body.theme-transitioning *::before,
+body.theme-transitioning *::after {
+  transition: background 0.8s ease, background-color 0.8s ease,
+    color 0.8s ease, border-color 0.8s ease,
+    box-shadow 0.8s ease, fill 0.8s ease, stroke 0.8s ease !important;
+}
 
 /* ========== Text Mark Annotations ========== */
 
@@ -210,8 +309,16 @@ a { color: inherit; text-decoration: none; }
 [data-theme="midnight"] .theme-icon-light { display: none; }
 [data-theme="midnight"] .theme-icon-dark { display: flex; }
 
-/* ========== Nav item hover (CSS-only to avoid stale inline styles on re-render) ========== */
+/* ========== Hover utilities — CSS-only to avoid stale inline styles on re-render ========== */
 .nav-item:hover { background: var(--shelf); }
+.hover-shelf:hover { background: var(--shelf); }
+.hover-shadow-xs:hover { box-shadow: var(--shadow-xs); }
+.hover-shadow-sm:hover { box-shadow: var(--shadow-sm); }
+.hover-shadow-md:hover { box-shadow: var(--shadow-md); }
+.hover-ink:hover { color: var(--ink); }
+.hover-ink-faded:hover { color: var(--ink-faded); }
+.focus-border:focus { border-color: var(--spine-strong); box-shadow: var(--shadow-sm); }
+.polaroid-frame:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
 /* ========== Sidebar search hover theme override ========== */
 
