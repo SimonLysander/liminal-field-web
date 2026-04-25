@@ -59,7 +59,7 @@ export default function HomePage() {
         >
           {getGreeting()}
         </h1>
-        <p className="mt-1.5 text-[14px]" style={{ color: 'var(--ink-ghost)' }}>
+        <p className="mt-1.5 text-[15px]" style={{ color: 'var(--ink-ghost)' }}>
           11 篇文稿 · 47 张图片 · 18 个标签
         </p>
       </motion.div>
@@ -67,7 +67,7 @@ export default function HomePage() {
       {/* Activity feed */}
       <div>
         <div
-          className="mb-3.5 text-[11px] font-semibold uppercase"
+          className="mb-3.5 text-[13px] font-semibold uppercase"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
         >
           最近活动
@@ -84,19 +84,19 @@ export default function HomePage() {
               variants={fadeUp}
             >
               <span
-                className="shrink-0 pt-px text-[12px] tabular-nums"
+                className="shrink-0 pt-px text-[13px] tabular-nums"
                 style={{ color: 'var(--ink-ghost)', minWidth: 48 }}
               >
                 {a.date}
               </span>
               <span
-                className="flex-1 text-[14px] leading-relaxed"
+                className="flex-1 text-[15px] leading-relaxed"
                 style={{ color: 'var(--ink-light)', letterSpacing: '-0.003em' }}
               >
                 {a.text}
               </span>
               <span
-                className="shrink-0 rounded px-2 py-0.5 text-[11px]"
+                className="shrink-0 rounded px-2 py-0.5 text-[13px]"
                 style={{ color: 'var(--ink-ghost)', background: 'var(--paper-dark)' }}
               >
                 {a.type}
@@ -109,7 +109,7 @@ export default function HomePage() {
       {/* Feature cards */}
       <div>
         <div
-          className="mb-3.5 text-[11px] font-semibold uppercase"
+          className="mb-3.5 text-[13px] font-semibold uppercase"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
         >
           精选
@@ -118,18 +118,16 @@ export default function HomePage() {
           {features.map((f, i) => (
             <motion.div
               key={i}
-              className="flex cursor-pointer flex-col rounded-xl p-6 transition-all duration-300"
+              className="hover-shadow-md flex cursor-pointer flex-col rounded-xl p-6 transition-all duration-300"
               style={{ background: 'var(--paper-dark)' }}
               custom={i + 3}
               initial="hidden"
               animate="show"
               variants={fadeUp}
               whileHover={{ y: -2, transition: { duration: 0.25, ease: appleEase } }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
             >
               <div
-                className="mb-3.5 text-[11px] font-semibold uppercase"
+                className="mb-3.5 text-[13px] font-semibold uppercase"
                 style={{ color: 'var(--ink-ghost)', letterSpacing: '0.03em' }}
               >
                 {f.label}
@@ -141,13 +139,13 @@ export default function HomePage() {
                 {f.title}
               </div>
               <div
-                className="text-[13px] leading-relaxed"
+                className="text-[14px] leading-relaxed"
                 style={{ color: 'var(--ink-faded)', letterSpacing: '-0.003em' }}
               >
                 {f.body}
               </div>
               <div
-                className="mt-auto pt-4 text-[11px]"
+                className="mt-auto pt-4 text-[13px]"
                 style={{ color: 'var(--ink-ghost)' }}
               >
                 {f.count}

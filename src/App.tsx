@@ -1,3 +1,22 @@
+/*
+ * App — Root layout & routing
+ *
+ * Layout architecture (Apple Books inspired):
+ *   - LEFT:  Sidebar / TreePanel — floating grey card (sidebar-bg #F2F2F2),
+ *            with margin + borderRadius + boxShadow to lift off the background.
+ *   - RIGHT: Main content area — flat white surface (paper #FFFFFF), no card
+ *            styling (no margin/borderRadius/boxShadow), so the content feels
+ *            expansive against the compact navigation card.
+ *   - Page background is white (--paper), matching the right side seamlessly.
+ *
+ * Route split:
+ *   - Display pages (home/note/gallery/agent) share MainLayout with the
+ *     display Sidebar component.
+ *   - Admin pages (/admin, /admin/edit/:id) are standalone — they have their
+ *     own TreePanel sidebar and are code-split via React.lazy.
+ */
+
+import { lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { smoothBounce } from './lib/motion';
@@ -10,36 +29,27 @@ import HomePage from './pages/home';
 import NotePage from './pages/note';
 import NotFoundPage from './pages/not-found';
 
-/**
- * Page transition variants — subtle fade + vertical shift.
- * Uses Apple-style easing [0.16, 1, 0.3, 1] for natural deceleration.
- */
+const AdminPage = lazy(() => import('./pages/admin'));
+const DraftEditPage = lazy(() => import('./pages/admin/edit'));
+
 const pageVariants = {
   enter: { opacity: 0, y: 6 },
   center: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -4 },
 };
 
-function App() {
+function MainLayout() {
   const location = useLocation();
 
-  /*
-   * Layout: sidebar (200px) sits in a paper-dark background,
-   * main content area is a raised card (rounded, shadowed) to the right.
-   * This creates the macOS-style split appearance from the reference design.
-   */
   return (
-    <div className="flex h-screen" style={{ background: 'var(--paper-dark)' }}>
+    <div className="flex h-screen" style={{ background: 'var(--paper)' }}>
+      {/* Sidebar — floating grey card; see Sidebar.tsx for styling details */}
       <Sidebar />
 
+      {/* Main content — flat white, no card styling (left card / right flat pattern) */}
       <main
         className="relative z-0 flex flex-1 flex-col overflow-hidden"
-        style={{
-          background: 'var(--paper)',
-          margin: '8px 8px 8px 0',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-sm), var(--inset-light)',
-        }}
+        style={{ background: 'var(--paper)' }}
       >
         <Topbar />
 
@@ -54,9 +64,9 @@ function App() {
             transition={{ duration: 0.25, ease: smoothBounce }}
           >
             <Routes location={location}>
-              <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/home" element={<HomePage />} />
               <Route path="/note" element={<NotePage />} />
+              <Route path="/note/:id" element={<NotePage />} />
               <Route path="/gallery" element={<GalleryPage />} />
               <Route path="/agent" element={<AgentPage />} />
               <Route path="*" element={<NotFoundPage />} />
@@ -65,6 +75,31 @@ function App() {
         </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route
+        path="/admin"
+        element={
+          <Suspense fallback={null}>
+            <AdminPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/admin/edit/:id"
+        element={
+          <Suspense fallback={null}>
+            <DraftEditPage />
+          </Suspense>
+        }
+      />
+      <Route path="/*" element={<MainLayout />} />
+    </Routes>
   );
 }
 

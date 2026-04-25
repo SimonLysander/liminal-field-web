@@ -1,6 +1,35 @@
-import { useState } from 'react';
+/*
+ * Sidebar — Display page navigation (Apple Books style)
+ *
+ * Design decisions:
+ *   - Floating card pattern: sidebar-bg (#F2F2F2) background with 8px margin,
+ *     radius-lg (10px) corners, and shadow-sm elevation. This creates a
+ *     card-like panel that "floats" off the white page background, matching
+ *     Apple Books' left panel aesthetic.
+ *   - Fixed 200px width: identical to admin TreePanel for visual consistency
+ *     when switching between display and admin views.
+ *   - Lucide icons (size=16, strokeWidth=1.5): unified icon style across all
+ *     navigation items for a clean, consistent feel.
+ *   - Notes sub-nav uses breadcrumb drill-down instead of a tree, since
+ *     useParams() doesn't work outside <Routes> — we parse location.pathname
+ *     directly to extract the active noteId.
+ */
+
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { structureApi } from '@/services/structure';
+import type { StructureNode } from '@/services/structure';
+import {
+  Home,
+  FileText,
+  Image,
+  Sparkles,
+  Search,
+  Folder,
+  File,
+  ChevronRight,
+} from 'lucide-react';
 
 /* ---------- Data ---------- */
 
@@ -8,72 +37,23 @@ const spaces = ['home', 'notes', 'gallery', 'agent'] as const;
 type Space = (typeof spaces)[number];
 
 const labels: Record<Space, string> = {
-  home: 'Home',
-  notes: 'Notes',
-  gallery: 'Gallery',
-  agent: 'Agent',
+  home: '首页',
+  notes: '笔记',
+  gallery: '画廊',
+  agent: '助手',
 };
+
+/* Lucide 统一配置 */
+const NAV_ICON = { size: 16, strokeWidth: 1.5 } as const;
 
 const icons: Record<Space, React.ReactNode> = {
-  home: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
-      <polyline points="9 21 9 14 15 14 15 21" />
-    </svg>
-  ),
-  notes: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="8" y1="13" x2="16" y2="13" />
-      <line x1="8" y1="17" x2="13" y2="17" />
-    </svg>
-  ),
-  gallery: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <polyline points="21 15 16 10 5 21" />
-    </svg>
-  ),
-  agent: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2L15 8.5L22 9.5L17 14.5L18 21.5L12 18L6 21.5L7 14.5L2 9.5L9 8.5L12 2z" />
-    </svg>
-  ),
+  home: <Home {...NAV_ICON} />,
+  notes: <FileText {...NAV_ICON} />,
+  gallery: <Image {...NAV_ICON} />,
+  agent: <Sparkles {...NAV_ICON} />,
 };
 
-/* Placeholder data for sub-nav — matches the reference design */
-const topics = [
-  {
-    name: '通感', emoji: '◯', notes: [
-      { title: '阈限空间里的创作方法论', meta: 'Apr 22 · 2.4k 字', status: 'done' as const },
-      { title: '声音的形状', meta: 'Apr 12 · 1.2k 字', status: 'done' as const },
-      { title: '通感笔记：前言', meta: 'Mar 28 · 1.8k 字', status: 'draft' as const },
-      { title: '关于颜色与记忆', meta: 'Apr 15 · 680 字', status: 'draft' as const },
-    ],
-  },
-  {
-    name: '创作方法', emoji: '△', notes: [
-      { title: '反向日记', meta: 'Apr 3 · 320 字', status: 'done' as const },
-      { title: '关于「场」的三种理解', meta: 'Mar 20 · 900 字', status: 'draft' as const },
-      { title: '不确定性笔记', meta: 'Mar 10 · 560 字', status: 'draft' as const },
-    ],
-  },
-  {
-    name: '视觉参考', emoji: '□', notes: [
-      { title: '松本大洋的留白', meta: 'Apr 8 · 450 字', status: 'done' as const },
-      { title: '色彩实验笔记', meta: 'Feb 28 · 380 字', status: 'draft' as const },
-    ],
-  },
-  {
-    name: '旅行', emoji: '◇', notes: [
-      { title: '青岛：扁平光的海', meta: 'Apr 21 · 600 字', status: 'done' as const },
-      { title: '东京的暗角', meta: 'Jan 15 · 1.1k 字', status: 'done' as const },
-    ],
-  },
-];
-
+/* Placeholder data for gallery & agent sub-nav */
 const tagGroups = [
   { label: '地点', tags: ['北京', '武汉', '青岛', '东京', '大理'] },
   { label: '风格', tags: ['扁平光', '自然', '街头', '抽象'] },
@@ -112,6 +92,33 @@ function spaceToPath(space: Space): string {
   return `/${space}`;
 }
 
+/* ---------- Notes tree navigation ---------- */
+
+type BreadcrumbItem = { id: string; name: string };
+
+function useStructureLevel(parentId: string | undefined) {
+  const [nodes, setNodes] = useState<StructureNode[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    const req = parentId
+      ? structureApi.getChildren(parentId, { visibility: 'public' })
+      : structureApi.getRootNodes({ visibility: 'public' });
+
+    req
+      .then((data) => { if (!cancelled) setNodes(data); })
+      .catch(() => { if (!cancelled) setNodes([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [parentId]);
+
+  return { nodes, loading };
+}
+
 /* ---------- Component ---------- */
 
 export default function Sidebar() {
@@ -119,28 +126,70 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const active = pathToSpace(location.pathname);
 
-  const [openTopic, setOpenTopic] = useState<number | null>(null);
-  const [activeNote, setActiveNote] = useState('阈限空间里的创作方法论');
+  /* 从 pathname 解析当前 noteId
+   * Sidebar 渲染在 <Routes> 外层，useParams() 不可用，
+   * 所以用正则从 location.pathname 提取 /note/:id */
+  const activeNoteId = (() => {
+    const m = location.pathname.match(/^\/note\/(.+)$/);
+    return m ? m[1] : null;
+  })();
+
   const [activeTags, setActiveTags] = useState<Record<string, boolean>>({ '北京': true });
+
+  /* 笔记树导航状态 */
+  const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
+  const currentParentId = breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].id : undefined;
+  const { nodes: currentNodes, loading: notesLoading } = useStructureLevel(currentParentId);
+
+  /* URL 中有 noteId 时，反查结构路径同步 breadcrumb */
+  useEffect(() => {
+    if (!activeNoteId || active !== 'notes') return;
+    let cancelled = false;
+
+    structureApi.getPathByContentItemId(activeNoteId).then((path) => {
+      if (cancelled) return;
+      const folders = path
+        .filter((n) => n.type === 'FOLDER')
+        .map((n) => ({ id: n.id, name: n.name }));
+      setBreadcrumb(folders);
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [activeNoteId, active]);
 
   const handleNavigate = (space: Space) => {
     navigate(spaceToPath(space));
-    setOpenTopic(null);
+    setBreadcrumb([]);
+  };
+
+  /* 进入文件夹时，清除当前文章 URL，只展示目录 */
+  const enterFolder = (node: StructureNode) => {
+    setBreadcrumb((prev) => [...prev, { id: node.id, name: node.name }]);
+    if (activeNoteId) navigate('/note');
+  };
+
+  /* 面包屑点击回退时，同样清除文章 URL */
+  const goToBreadcrumb = (index: number | null) => {
+    setBreadcrumb(index === null ? [] : breadcrumb.slice(0, index + 1));
+    if (activeNoteId) navigate('/note');
   };
 
   return (
     <aside
-      className="flex h-full shrink-0 flex-col overflow-y-auto"
+      className="flex shrink-0 flex-col overflow-y-auto"
       style={{
         width: 200,
         background: 'var(--sidebar-bg)',
         padding: '12px 8px',
+        margin: '8px 0 8px 8px',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-sm)',
       }}
     >
       {/* Header */}
       <div className="px-3 pb-5 pt-2">
         <span
-          className="text-[13px] font-bold"
+          className="text-[14px] font-bold"
           style={{ color: 'var(--ink)', letterSpacing: '-0.02em' }}
         >
           Liminal Field
@@ -149,19 +198,16 @@ export default function Sidebar() {
 
       {/* Search trigger */}
       <button
-        className="sidebar-search mb-2.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-all duration-150"
+        className="sidebar-search mb-2.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-all duration-150"
         style={{
           background: 'var(--shelf)',
           color: 'var(--ink-ghost)',
           fontFamily: 'var(--font-sans)',
         }}
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.4, color: 'var(--ink)' }}>
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+        <Search size={13} strokeWidth={2} style={{ opacity: 0.4, color: 'var(--ink)' }} />
         <span>搜索</span>
-        <kbd className="ml-auto text-[11px]" style={{ opacity: 0.45, color: 'var(--ink-ghost)' }}>⌘K</kbd>
+        <kbd className="ml-auto text-[12px]" style={{ opacity: 0.45, color: 'var(--ink-ghost)' }}>⌘K</kbd>
       </button>
 
       {/* Main navigation */}
@@ -172,7 +218,6 @@ export default function Sidebar() {
             className="nav-item relative flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors duration-150"
             onClick={() => handleNavigate(space)}
           >
-            {/* Active indicator — shared layout animation for smooth sliding */}
             {space === active && (
               <motion.span
                 className="absolute inset-0 rounded-lg"
@@ -188,7 +233,7 @@ export default function Sidebar() {
               {icons[space]}
             </span>
             <span
-              className="relative z-[1] text-[13px] transition-colors duration-200"
+              className="relative z-[1] text-[14px] transition-colors duration-200"
               style={{
                 color: space === active ? 'var(--ink)' : 'var(--ink-faded)',
                 fontWeight: space === active ? 500 : 400,
@@ -200,117 +245,106 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Sub-nav: Notes — topic list / note list */}
+      {/* Sub-nav: Notes — tree drill-down, fetches per level */}
       {active === 'notes' && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="mx-3 my-2.5 h-px" style={{ background: 'var(--separator)' }} />
-          <AnimatePresence mode="wait">
-            {openTopic === null ? (
-              <motion.div
-                key="topics"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-              >
-                <div
-                  className="px-3 pb-2 pt-1.5 text-[11px] font-medium uppercase"
-                  style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+
+          {/* 面包屑导航 — 每个祖先都可点击 */}
+          <div className="flex flex-wrap items-center gap-0.5 px-3 pb-2 pt-1.5">
+            <span
+              className={`text-[12px] ${breadcrumb.length > 0 ? 'cursor-pointer hover-ink' : 'font-medium'} transition-colors duration-150`}
+              style={{ color: breadcrumb.length > 0 ? 'var(--ink-faded)' : 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+              onClick={breadcrumb.length > 0 ? () => goToBreadcrumb(null) : undefined}
+            >
+              文稿
+            </span>
+            {breadcrumb.map((item, i) => (
+              <span key={item.id} className="flex items-center gap-0.5">
+                <span className="text-[10px]" style={{ color: 'var(--ink-ghost)' }}>/</span>
+                <span
+                  className={`truncate text-[12px] ${i < breadcrumb.length - 1 ? 'cursor-pointer hover-ink' : 'font-medium'} transition-colors duration-150`}
+                  style={{
+                    color: i < breadcrumb.length - 1 ? 'var(--ink-faded)' : 'var(--ink-light)',
+                    maxWidth: 100,
+                  }}
+                  onClick={i < breadcrumb.length - 1 ? () => goToBreadcrumb(i) : undefined}
                 >
-                  文稿
-                </div>
-                {topics.map((t, i) => (
+                  {item.name}
+                </span>
+              </span>
+            ))}
+          </div>
+
+          {notesLoading ? (
+            <div className="px-3 py-4 text-[12px]" style={{ color: 'var(--ink-ghost)' }}>加载中...</div>
+          ) : currentNodes.length === 0 ? (
+            <div className="px-3 py-4 text-[12px]" style={{ color: 'var(--ink-ghost)' }}>空</div>
+          ) : (
+            <motion.div
+              key={currentParentId || 'root'}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.12 }}
+            >
+              {currentNodes.map((node) =>
+                node.type === 'FOLDER' ? (
                   <div
-                    key={i}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--shelf)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                    onClick={() => setOpenTopic(i)}
+                    key={node.id}
+                    className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
+                    onClick={() => enterFolder(node)}
                   >
-                    <span className="w-4 text-center text-[10px]" style={{ color: 'var(--ink-ghost)' }}>{t.emoji}</span>
-                    <span className="text-[13px]" style={{ color: 'var(--ink-light)' }}>{t.name}</span>
-                    <span className="ml-auto text-[11px]" style={{ color: 'var(--ink-ghost)' }}>{t.notes.length}</span>
+                    <Folder size={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
+                    <span className="truncate text-[14px]" style={{ color: 'var(--ink-light)' }}>{node.name}</span>
+                    {node.hasChildren && (
+                      <ChevronRight size={12} strokeWidth={2} className="ml-auto shrink-0" style={{ color: 'var(--ink-ghost)' }} />
+                    )}
                   </div>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`t-${openTopic}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-              >
-                <div
-                  className="cursor-pointer px-3 pb-2.5 pt-1 text-[12px] transition-colors duration-200"
-                  style={{ color: 'var(--ink-faded)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ink-faded)'; }}
-                  onClick={() => setOpenTopic(null)}
-                >
-                  ← 文稿 / {topics[openTopic].name}
-                </div>
-                {topics[openTopic].notes.map((n, ni) => (
+                ) : node.contentItemId ? (
                   <div
-                    key={ni}
-                    className="flex cursor-pointer items-start gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
-                    style={{ background: activeNote === n.title ? 'var(--shelf)' : 'transparent' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--shelf)'; }}
-                    onMouseLeave={(e) => {
-                      if (activeNote !== n.title) e.currentTarget.style.background = 'transparent';
-                    }}
-                    onClick={() => setActiveNote(n.title)}
+                    key={node.id}
+                    className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
+                    style={{ background: activeNoteId === node.contentItemId ? 'var(--shelf)' : undefined }}
+                    onClick={() => navigate(`/note/${node.contentItemId}`)}
                   >
+                    <File size={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
                     <span
-                      className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={
-                        n.status === 'done'
-                          ? { background: 'var(--ink)', opacity: 0.4 }
-                          : { border: '1.5px solid var(--ink-ghost)' }
-                      }
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <div
-                        className="truncate text-[13px]"
-                        style={{
-                          color: activeNote === n.title ? 'var(--ink)' : 'var(--ink-light)',
-                          fontWeight: activeNote === n.title ? 500 : 400,
-                        }}
-                      >
-                        {n.title}
-                      </div>
-                      <div className="text-[11px]" style={{ color: 'var(--ink-ghost)' }}>
-                        {n.meta}
-                      </div>
-                    </div>
+                      className="truncate text-[14px]"
+                      style={{
+                        color: activeNoteId === node.contentItemId ? 'var(--ink)' : 'var(--ink-light)',
+                        fontWeight: activeNoteId === node.contentItemId ? 500 : 400,
+                      }}
+                    >
+                      {node.name}
+                    </span>
                   </div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                ) : null,
+              )}
+            </motion.div>
+          )}
         </div>
       )}
 
-      {/* Sub-nav: Gallery — tag filters */}
+      {/* Sub-nav: Gallery — tag filters (placeholder) */}
       {active === 'gallery' && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="mx-3 my-2.5 h-px" style={{ background: 'var(--separator)' }} />
           <div
-            className="px-3 pb-2 pt-1.5 text-[11px] font-medium uppercase"
+            className="px-3 pb-2 pt-1.5 text-[12px] font-medium uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             标签筛选
           </div>
           {tagGroups.map((g, i) => (
             <div key={i} className="mb-2.5 px-3">
-              <div className="mb-1.5 text-[11px] font-medium" style={{ color: 'var(--ink-ghost)' }}>
+              <div className="mb-1.5 text-[12px] font-medium" style={{ color: 'var(--ink-ghost)' }}>
                 {g.label}
               </div>
               <div className="flex flex-wrap gap-1">
                 {g.tags.map((t) => (
                   <span
                     key={t}
-                    className="cursor-pointer rounded-full px-2.5 py-[3px] text-[11px] transition-all duration-200"
+                    className="cursor-pointer rounded-full px-2.5 py-[3px] text-[12px] transition-all duration-200"
                     style={
                       activeTags[t]
                         ? { background: 'var(--ink)', color: 'var(--accent-contrast)', fontWeight: 500 }
@@ -327,12 +361,12 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Sub-nav: Agent — sessions */}
+      {/* Sub-nav: Agent — sessions (placeholder) */}
       {active === 'agent' && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="mx-3 my-2.5 h-px" style={{ background: 'var(--separator)' }} />
           <div
-            className="px-3 pb-2 pt-1.5 text-[11px] font-medium uppercase"
+            className="px-3 pb-2 pt-1.5 text-[12px] font-medium uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             对话
@@ -340,16 +374,12 @@ export default function Sidebar() {
           {agentSessions.map((s, i) => (
             <div
               key={i}
-              className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-[7px] transition-colors duration-150"
-              style={{ background: i === 0 ? 'var(--shelf)' : 'transparent' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--shelf)'; }}
-              onMouseLeave={(e) => {
-                if (i !== 0) e.currentTarget.style.background = 'transparent';
-              }}
+              className="hover-shelf flex cursor-pointer items-center justify-between rounded-lg px-3 py-[7px] transition-colors duration-150"
+              style={{ background: i === 0 ? 'var(--shelf)' : undefined }}
             >
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div
-                  className="truncate text-[13px]"
+                  className="truncate text-[14px]"
                   style={{
                     color: i === 0 ? 'var(--ink)' : 'var(--ink-light)',
                     fontWeight: i === 0 ? 500 : 400,
@@ -357,29 +387,16 @@ export default function Sidebar() {
                 >
                   {s.title}
                 </div>
-                <div className="text-[11px]" style={{ color: 'var(--ink-ghost)' }}>
-                  {s.date}
-                </div>
+                <div className="text-[12px]" style={{ color: 'var(--ink-ghost)' }}>{s.date}</div>
               </div>
               {s.status === 'active' && (
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: 'var(--ink)', opacity: 0.4 }}
-                />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: 'var(--ink)', opacity: 0.4 }} />
               )}
             </div>
           ))}
           <div
-            className="mt-1 cursor-pointer rounded-lg px-3 py-2 text-[12px] transition-all duration-150"
+            className="hover-shelf hover-ink-faded mt-1 cursor-pointer rounded-lg px-3 py-2 text-[12px] transition-all duration-150"
             style={{ color: 'var(--ink-ghost)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--ink-faded)';
-              e.currentTarget.style.background = 'var(--shelf)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--ink-ghost)';
-              e.currentTarget.style.background = 'transparent';
-            }}
           >
             + 新对话
           </div>
@@ -389,7 +406,7 @@ export default function Sidebar() {
       {/* Bottom — ambient phrase */}
       <div className="mt-auto px-3 py-4">
         <span
-          className="text-[11px] leading-relaxed"
+          className="text-[12px] leading-relaxed"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.01em' }}
         >
           {getAmbientPhrase()}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { appleEase } from '@/lib/motion';
+import { ArrowUp, Sparkles as SparklesIcon } from 'lucide-react';
 
 /* ---------- Mock Data ---------- */
 
@@ -98,9 +99,7 @@ export default function AgentPage() {
                 className="absolute -inset-2 rounded-full"
                 style={{ background: 'radial-gradient(circle, var(--shelf) 0%, transparent 70%)', animation: 'glow-pulse 3s ease-in-out infinite' }}
               />
-              <svg className="relative z-[1]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--ink-faded)' }}>
-                <path d="M12 2L15 8.5L22 9.5L17 14.5L18 21.5L12 18L6 21.5L7 14.5L2 9.5L9 8.5L12 2z" />
-              </svg>
+              <SparklesIcon className="relative z-[1]" size={24} strokeWidth={1.5} style={{ color: 'var(--ink-faded)' }} />
             </motion.div>
 
             <motion.h1
@@ -110,10 +109,10 @@ export default function AgentPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
-              Liminal Field Agent
+              Liminal Field 助手
             </motion.h1>
             <motion.p
-              className="text-[14px]"
+              className="text-[15px]"
               style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.003em' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -132,22 +131,11 @@ export default function AgentPage() {
               {suggestions.map((s, i) => (
                 <button
                   key={i}
-                  className="cursor-pointer rounded-full px-4 py-[7px] text-[13px] transition-all duration-200"
+                  className="hover-shelf hover-ink cursor-pointer rounded-full px-4 py-[7px] text-[14px] transition-all duration-200"
                   style={{
                     color: 'var(--ink-faded)',
                     border: '1px solid var(--box-border)',
-                    background: 'transparent',
                     letterSpacing: '-0.003em',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--shelf)';
-                    e.currentTarget.style.color = 'var(--ink)';
-                    e.currentTarget.style.borderColor = 'var(--spine-strong)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--ink-faded)';
-                    e.currentTarget.style.borderColor = 'var(--box-border)';
                   }}
                 >
                   {s}
@@ -172,7 +160,7 @@ export default function AgentPage() {
                     return (
                       <p
                         key={j}
-                        className="inline-block max-w-[85%] rounded-[18px] px-4 py-2.5 text-[14px] leading-relaxed"
+                        className="inline-block max-w-[85%] rounded-[18px] px-4 py-2.5 text-[15px] leading-relaxed"
                         style={{
                           background: 'var(--shelf)',
                           color: 'var(--ink)',
@@ -188,7 +176,7 @@ export default function AgentPage() {
                     return (
                       <p
                         key={j}
-                        className="text-[14px] leading-[1.75]"
+                        className="text-[15px] leading-[1.75]"
                         style={{ color: 'var(--ink-light)', letterSpacing: '-0.003em' }}
                       >
                         {block.text}
@@ -212,27 +200,25 @@ export default function AgentPage() {
                         {block.items.map((card, k) => (
                           <div
                             key={k}
-                            className="cursor-default rounded-xl p-4 transition-shadow duration-250"
+                            className="hover-shadow-sm cursor-default rounded-xl p-4 transition-shadow duration-250"
                             style={{ background: 'var(--paper-dark)' }}
-                            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
                           >
                             <div className="mb-2 flex items-center gap-2.5">
                               <span
-                                className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+                                className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
                                 style={{ background: 'var(--ink)', color: 'var(--accent-contrast)' }}
                               >
                                 {card.num}
                               </span>
                               <span
-                                className="text-[14px] font-semibold"
+                                className="text-[15px] font-semibold"
                                 style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}
                               >
                                 {card.title}
                               </span>
                             </div>
                             <p
-                              className="mb-2.5 text-[13px] leading-relaxed"
+                              className="mb-2.5 text-[14px] leading-relaxed"
                               style={{ color: 'var(--ink-faded)' }}
                             >
                               {card.desc}
@@ -241,7 +227,7 @@ export default function AgentPage() {
                               {card.notes.map((n, ni) => (
                                 <span
                                   key={ni}
-                                  className="rounded-full px-2.5 py-[3px] text-[11px]"
+                                  className="rounded-full px-2.5 py-[3px] text-[12px]"
                                   style={{
                                     color: 'var(--ink-faded)',
                                     background: 'var(--paper)',
@@ -269,7 +255,7 @@ export default function AgentPage() {
           <div className="relative flex items-center">
             <input
               type="text"
-              className="w-full rounded-3xl border px-5 py-3.5 pr-[52px] text-[14px] outline-none transition-all duration-250"
+              className="focus-border w-full rounded-3xl border px-5 py-3.5 pr-[52px] text-[15px] outline-none transition-all duration-250"
               style={{
                 borderColor: 'var(--box-border)',
                 background: 'var(--paper)',
@@ -280,14 +266,8 @@ export default function AgentPage() {
               placeholder="向 Agent 提问..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = 'var(--spine-strong)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'var(--box-border)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+
+
             />
             <button
               className="absolute right-1.5 flex h-[34px] w-[34px] items-center justify-center rounded-full transition-all duration-250"
@@ -298,10 +278,7 @@ export default function AgentPage() {
               }}
               disabled={!input.trim()}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5" />
-                <polyline points="5 12 12 5 19 12" />
-              </svg>
+              <ArrowUp size={14} strokeWidth={2.5} />
             </button>
           </div>
         </div>
@@ -315,7 +292,7 @@ export default function AgentPage() {
         {/* Insights */}
         <div className="flex flex-col">
           <div
-            className="mb-3 text-[11px] font-semibold uppercase"
+            className="mb-3 text-[12px] font-semibold uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             洞察
@@ -324,19 +301,17 @@ export default function AgentPage() {
             {insights.map((ins, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-1.5 rounded-lg p-3.5 transition-shadow duration-200"
+                className="hover-shadow-xs flex flex-col gap-1.5 rounded-lg p-3.5 transition-shadow duration-200"
                 style={{ background: 'var(--paper-dark)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div className="flex items-center justify-between">
                   <span
-                    className="text-[11px] font-semibold uppercase"
+                    className="text-[12px] font-semibold uppercase"
                     style={{ color: 'var(--ink-ghost)', letterSpacing: '0.03em' }}
                   >
                     {ins.label}
                   </span>
-                  <span className="text-[11px] font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
+                  <span className="text-[12px] font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
                     {ins.strength}%
                   </span>
                 </div>
@@ -350,11 +325,11 @@ export default function AgentPage() {
                     transition={{ delay: 0.3 + i * 0.1, duration: 0.6, ease: appleEase }}
                   />
                 </div>
-                <div className="text-[13px] font-medium" style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}>
+                <div className="text-[14px] font-medium" style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}>
                   {ins.value}
                 </div>
                 {ins.sub && (
-                  <div className="text-[11px]" style={{ color: 'var(--ink-ghost)' }}>
+                  <div className="text-[12px]" style={{ color: 'var(--ink-ghost)' }}>
                     {ins.sub}
                   </div>
                 )}
@@ -366,7 +341,7 @@ export default function AgentPage() {
         {/* Related notes */}
         <div className="flex flex-col">
           <div
-            className="mb-3 text-[11px] font-semibold uppercase"
+            className="mb-3 text-[12px] font-semibold uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             关联文稿
@@ -375,12 +350,10 @@ export default function AgentPage() {
             {relatedNotes.map((note, i) => (
               <div
                 key={i}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors duration-150"
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--shelf)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                className="hover-shelf flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors duration-150"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
-                  <span className="truncate text-[13px] transition-colors duration-150" style={{ color: 'var(--ink-light)' }}>
+                  <span className="truncate text-[14px] transition-colors duration-150" style={{ color: 'var(--ink-light)' }}>
                     {note.title}
                   </span>
                   <div className="h-[2px] overflow-hidden rounded-sm" style={{ background: 'var(--separator)' }}>
@@ -393,7 +366,7 @@ export default function AgentPage() {
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
+                <span className="shrink-0 text-[12px] font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
                   {note.match}%
                 </span>
               </div>
