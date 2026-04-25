@@ -1,3 +1,11 @@
+/*
+ * GalleryPage — Photo gallery with polaroid display
+ *
+ * Polaroid frame uses radius-md (8px) for the card and image area.
+ * Timeline panel: 200px wide, consistent with all right-side panels.
+ * Direction-aware slide animation gives spatial continuity when navigating.
+ */
+
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
@@ -81,7 +89,7 @@ export default function GalleryPage() {
       <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-10 py-8">
         {/* Polaroid frame */}
         <div
-          className="relative transition-all duration-400"
+          className="polaroid-frame relative transition-all duration-400"
           style={{
             background: 'var(--paper-white)',
             padding: '8px 8px 32px',
@@ -89,21 +97,13 @@ export default function GalleryPage() {
             boxShadow: 'var(--shadow-md)',
             maxWidth: '75%',
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-          }}
         >
           {/* Image area */}
           <div
             className="relative flex w-full items-center justify-center"
             style={{
               background: 'var(--paper-dark)',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: 'var(--radius-md)',
               minHeight: 320,
               aspectRatio: '4/3',
             }}
@@ -111,7 +111,7 @@ export default function GalleryPage() {
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={photoIdx}
-                className="text-[13px]"
+                className="text-[15px]"
                 style={{ color: 'var(--ink-ghost)' }}
                 custom={direction}
                 variants={slideVariants}
@@ -142,7 +142,7 @@ export default function GalleryPage() {
           </div>
 
           {/* Caption */}
-          <div className="px-1 pt-2.5 text-center text-[13px]" style={{ color: 'var(--ink-faded)' }}>
+          <div className="px-1 pt-2.5 text-center text-[15px]" style={{ color: 'var(--ink-faded)' }}>
             {photo.caption}
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function GalleryPage() {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <div
-            className="flex justify-center gap-1.5 text-[11px]"
+            className="flex justify-center gap-1.5 text-[12px]"
             style={{ color: 'var(--ink-ghost)' }}
           >
             <span>{photo.date}</span>
@@ -166,7 +166,7 @@ export default function GalleryPage() {
             <span>{photo.settings}</span>
           </div>
           <div
-            className="text-center text-[14px] leading-relaxed"
+            className="text-center text-[15px] leading-relaxed"
             style={{ color: 'var(--ink-light)', letterSpacing: '-0.01em' }}
           >
             {photo.desc}
@@ -180,7 +180,7 @@ export default function GalleryPage() {
         style={{ borderLeft: '0.5px solid var(--separator)' }}
       >
         <div
-          className="mb-3 text-[11px] font-semibold uppercase"
+          className="mb-3 text-[12px] font-semibold uppercase"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
         >
           时间线
@@ -198,7 +198,7 @@ export default function GalleryPage() {
             <div key={gi}>
               {/* Year marker */}
               <div
-                className="relative pb-1.5 pt-3.5 text-[11px] font-semibold"
+                className="relative pb-1.5 pt-3.5 text-[12px] font-semibold"
                 style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.01em' }}
               >
                 {/* Year dot */}
@@ -219,7 +219,7 @@ export default function GalleryPage() {
               {group.months.map((m, mi) => (
                 <div
                   key={mi}
-                  className="relative flex cursor-pointer items-center gap-2 py-[5px] text-[13px] transition-all duration-200"
+                  className="relative flex cursor-pointer items-center gap-2 py-[5px] text-[15px] transition-all duration-200"
                   style={{
                     color: m.active ? 'var(--ink)' : 'var(--ink-faded)',
                     fontWeight: m.active ? 600 : 400,
@@ -237,7 +237,7 @@ export default function GalleryPage() {
                     }}
                   />
                   {m.name}
-                  <span className="ml-auto text-[11px]" style={{ color: 'var(--ink-ghost)' }}>
+                  <span className="ml-auto text-[12px]" style={{ color: 'var(--ink-ghost)' }}>
                     {m.count}
                   </span>
                 </div>
