@@ -96,23 +96,88 @@ src/pages/admin/
 
 ## 后端 API
 
-**后端完全不变。** 结构树 + 内容项是业务无关的通用存储——它不知道"笔记"和"画廊"的区别。业务含义完全由前端消费端决定。
+### 三层架构
 
-画廊动态在数据层就是普通的文件夹/文档节点 + 内容项 + 资产附件。前端的画廊管理视图只是用不同的 UI（列表+图片网格）来消费同一套 API：
+```
+通用存储层（结构树 + 内容项，完全业务无关）
+       ↑
+薄业务接口层（GalleryController/Service，唯一耦合业务的地方）
+       ↑
+前端（调 /api/v1/gallery/posts，不知道底层怎么存的）
+```
 
-- `GET /api/v1/structure-nodes` + `getChildren()` — 获取指定文件夹下的节点
-- `POST /api/v1/structure-nodes` — 创建节点
-- `GET/PUT /api/v1/contents/:id` — 读取/更新内容
-- `POST/GET /api/v1/contents/:id/assets` — 上传/列出照片
-- `DELETE /api/v1/structure-nodes/:id` — 删除节点
+- **通用存储层不变。** 结构树 + 内容项依然是业务无关的通用存储。
+- **新增薄业务接口层。** 后端加一个 `GalleryController` + `GalleryService`，内部调用现有的 structure + content 服务，对外暴露画廊专用的 REST 接口。这是唯一耦合业务语义的地方。
+- **前端不感知存储模型。** 不碰结构树 API，不知道文件夹 ID，不管 tags 怎么标记。只调画廊接口。
 
-前端需要知道哪个文件夹是画廊的根——这通过前端配置或用户在管理后台中指定，不在后端层面做任何约定。
+### 画廊 API 端点
+
+```
+GET    /api/v1/gallery/posts              — 动态列表（支持 ?status=draft|published 筛选）
+POST   /api/v1/gallery/posts              — 创建新动态（标题 + 描述）
+GET    /api/v1/gallery/posts/:id          — 动态详情（含照片列表）
+PUT    /api/v1/gallery/posts/:id          — 更新动态（标题、描述）
+DELETE /api/v1/gallery/posts/:id          — 删除动态
+POST   /api/v1/gallery/posts/:id/photos   — 上传照片
+DELETE /api/v1/gallery/posts/:id/photos/:photoId — 删除照片
+PUT    /api/v1/gallery/posts/:id/publish  — 发布
+PUT    /api/v1/gallery/posts/:id/unpublish — 取消发布
+```
+
+### 返回数据结构
+
+```typescript
+// 列表项
+interface GalleryPost {
+  id: string;
+  title: string;
+  description: string;
+  status: 'draft' | 'published';
+  coverUrl: string | null;   // 第一张照片的 URL
+  photoCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 详情（含完整照片列表）
+interface GalleryPostDetail extends GalleryPost {
+  photos: GalleryPhoto[];
+}
+
+interface GalleryPhoto {
+  id: string;            // asset path 或唯一标识
+  url: string;           // 可访问的图片 URL
+  fileName: string;
+  size: number;
+  order: number;         // 排序序号
+}
+```
 
 ### 编辑交互
 
 画廊动态的编辑是**原地编辑**（inline），不跳转到 `/admin/edit/:id`。PostDetail 组件在查看态和编辑态之间切换：
 - 查看态：只读展示照片网格 + 描述文字 + 操作链接
 - 编辑态：照片可拖拽排序/删除/新增，描述变为 textarea，底部显示保存/取消按钮
+
+## 前端服务层
+
+新建 `src/services/gallery.ts`，封装画廊 API 调用：
+
+```typescript
+// galleryApi — 画廊动态前端服务
+// 前端不直接调用 structure / content API，只通过画廊接口操作
+export const galleryApi = {
+  list:       (status?) => request<GalleryPost[]>(`/gallery/posts`, { params: { status } }),
+  getById:    (id)      => request<GalleryPostDetail>(`/gallery/posts/${id}`),
+  create:     (data)    => request<GalleryPost>(`/gallery/posts`, { method: 'POST', body: data }),
+  update:     (id, data)=> request<GalleryPost>(`/gallery/posts/${id}`, { method: 'PUT', body: data }),
+  remove:     (id)      => request(`/gallery/posts/${id}`, { method: 'DELETE' }),
+  uploadPhoto:(id, file)=> { /* FormData upload */ },
+  deletePhoto:(id, photoId) => request(`/gallery/posts/${id}/photos/${photoId}`, { method: 'DELETE' }),
+  publish:    (id)      => request(`/gallery/posts/${id}/publish`, { method: 'PUT' }),
+  unpublish:  (id)      => request(`/gallery/posts/${id}/unpublish`, { method: 'PUT' }),
+};
+```
 
 ## 样式规范
 
