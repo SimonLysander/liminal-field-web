@@ -83,12 +83,15 @@ export function PostDetail({
         {new Date(post.createdAt).toLocaleDateString('zh-CN')} · {post.status === 'published' ? '已发布' : '草稿'}
       </div>
 
-      {/* Action message */}
-      {actionMessage && (
-        <div className="mb-4 rounded-lg px-3 py-2" style={{ background: 'rgba(52,199,89,0.06)' }}>
-          <p style={{ color: 'var(--mark-green)', fontSize: 'var(--text-xs)' }}>{actionMessage}</p>
-        </div>
-      )}
+      {/* Action message — 失败消息显示红色 */}
+      {actionMessage && (() => {
+        const isError = actionMessage.includes('失败');
+        return (
+          <div className="mb-4 rounded-lg px-3 py-2" style={{ background: isError ? 'rgba(255,59,48,0.06)' : 'rgba(52,199,89,0.06)' }}>
+            <p style={{ color: isError ? 'var(--mark-red)' : 'var(--mark-green)', fontSize: 'var(--text-xs)' }}>{actionMessage}</p>
+          </div>
+        );
+      })()}
 
       {/* Photos section */}
       <div className="mb-5">

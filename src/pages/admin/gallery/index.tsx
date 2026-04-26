@@ -39,8 +39,15 @@ export default function GalleryAdmin() {
         onReload={() => void ws.reload()}
       />
 
-      {/* Center — post detail */}
-      {ws.selectedPost ? (
+      {/* Center — post detail or empty/error state */}
+      {ws.error && !ws.selectedPost && (
+        <div className="flex flex-1 items-center justify-center">
+          <div style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>
+            {ws.error}
+          </div>
+        </div>
+      )}
+      {!ws.error && ws.selectedPost ? (
         <PostDetail
           post={ws.selectedPost}
           editing={ws.editing}
@@ -54,13 +61,13 @@ export default function GalleryAdmin() {
           onUploadPhoto={(f) => void ws.uploadPhoto(f)}
           onDeletePhoto={(id) => void ws.deletePhoto(id)}
         />
-      ) : (
+      ) : !ws.error ? (
         <div className="flex flex-1 items-center justify-center">
           <div style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>
             选择一条动态，或点击"新建"
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Right — info panel */}
       {ws.selectedPost && (

@@ -45,66 +45,94 @@ export function useGalleryWorkspace() {
 
   /* 创建新动态 */
   const createPost = useCallback(async (title: string, description: string) => {
-    const post = await galleryApi.create({ title, description });
-    await loadPosts();
-    await selectPost(post.id);
-    showMessage('已创建');
+    try {
+      const post = await galleryApi.create({ title, description });
+      await loadPosts();
+      await selectPost(post.id);
+      showMessage('已创建');
+    } catch (e) {
+      showMessage(`创建失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [loadPosts, selectPost]);
 
   /* 更新动态 */
   const updatePost = useCallback(async (title: string, description: string) => {
     if (!selectedPost) return;
-    await galleryApi.update(selectedPost.id, { title, description });
-    await galleryApi.getById(selectedPost.id).then(setSelectedPost);
-    await loadPosts();
-    setEditing(false);
-    showMessage('已保存');
+    try {
+      await galleryApi.update(selectedPost.id, { title, description });
+      await galleryApi.getById(selectedPost.id).then(setSelectedPost);
+      await loadPosts();
+      setEditing(false);
+      showMessage('已保存');
+    } catch (e) {
+      showMessage(`保存失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [selectedPost, loadPosts]);
 
   /* 删除动态 */
   const deletePost = useCallback(async () => {
     if (!selectedPost) return;
-    await galleryApi.remove(selectedPost.id);
-    setSelectedPost(null);
-    await loadPosts();
-    showMessage('已删除');
+    try {
+      await galleryApi.remove(selectedPost.id);
+      setSelectedPost(null);
+      await loadPosts();
+      showMessage('已删除');
+    } catch (e) {
+      showMessage(`删除失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [selectedPost, loadPosts]);
 
   /* 上传照片 */
   const uploadPhoto = useCallback(async (file: File) => {
     if (!selectedPost) return;
-    await galleryApi.uploadPhoto(selectedPost.id, file);
-    const updated = await galleryApi.getById(selectedPost.id);
-    setSelectedPost(updated);
-    await loadPosts();
+    try {
+      await galleryApi.uploadPhoto(selectedPost.id, file);
+      const updated = await galleryApi.getById(selectedPost.id);
+      setSelectedPost(updated);
+      await loadPosts();
+    } catch (e) {
+      showMessage(`上传失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [selectedPost, loadPosts]);
 
   /* 删除照片 */
   const deletePhoto = useCallback(async (photoId: string) => {
     if (!selectedPost) return;
-    await galleryApi.deletePhoto(selectedPost.id, photoId);
-    const updated = await galleryApi.getById(selectedPost.id);
-    setSelectedPost(updated);
-    await loadPosts();
+    try {
+      await galleryApi.deletePhoto(selectedPost.id, photoId);
+      const updated = await galleryApi.getById(selectedPost.id);
+      setSelectedPost(updated);
+      await loadPosts();
+    } catch (e) {
+      showMessage(`删除照片失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [selectedPost, loadPosts]);
 
   /* 发布 / 取消发布 */
   const publishPost = useCallback(async () => {
     if (!selectedPost) return;
-    await galleryApi.publish(selectedPost.id);
-    const updated = await galleryApi.getById(selectedPost.id);
-    setSelectedPost(updated);
-    await loadPosts();
-    showMessage('已发布');
+    try {
+      await galleryApi.publish(selectedPost.id);
+      const updated = await galleryApi.getById(selectedPost.id);
+      setSelectedPost(updated);
+      await loadPosts();
+      showMessage('已发布');
+    } catch (e) {
+      showMessage(`发布失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [selectedPost, loadPosts]);
 
   const unpublishPost = useCallback(async () => {
     if (!selectedPost) return;
-    await galleryApi.unpublish(selectedPost.id);
-    const updated = await galleryApi.getById(selectedPost.id);
-    setSelectedPost(updated);
-    await loadPosts();
-    showMessage('已取消发布');
+    try {
+      await galleryApi.unpublish(selectedPost.id);
+      const updated = await galleryApi.getById(selectedPost.id);
+      setSelectedPost(updated);
+      await loadPosts();
+      showMessage('已取消发布');
+    } catch (e) {
+      showMessage(`取消发布失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    }
   }, [selectedPost, loadPosts]);
 
   function showMessage(msg: string) {
