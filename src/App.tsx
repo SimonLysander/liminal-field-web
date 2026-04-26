@@ -29,7 +29,9 @@ import HomePage from './pages/home';
 import NotePage from './pages/note';
 import NotFoundPage from './pages/not-found';
 
-const AdminPage = lazy(() => import('./pages/admin'));
+const AdminShell = lazy(() => import('./pages/admin'));
+const ContentAdmin = lazy(() => import('./pages/admin/content'));
+const GalleryAdmin = lazy(() => import('./pages/admin/gallery'));
 const DraftEditPage = lazy(() => import('./pages/admin/edit'));
 
 const pageVariants = {
@@ -82,14 +84,11 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route
-        path="/admin"
-        element={
-          <Suspense fallback={null}>
-            <AdminPage />
-          </Suspense>
-        }
-      />
+      <Route path="/admin" element={<Suspense fallback={null}><AdminShell /></Suspense>}>
+        <Route index element={<Navigate to="/admin/content" replace />} />
+        <Route path="content" element={<Suspense fallback={null}><ContentAdmin /></Suspense>} />
+        <Route path="gallery" element={<Suspense fallback={null}><GalleryAdmin /></Suspense>} />
+      </Route>
       <Route
         path="/admin/edit/:id"
         element={
