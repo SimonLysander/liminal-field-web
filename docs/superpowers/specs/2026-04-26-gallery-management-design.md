@@ -96,16 +96,17 @@ src/pages/admin/
 
 ## 后端 API
 
-复用现有的 content-items API。画廊动态通过结构树中一个专用的根文件夹区分——约定一个名为 `_gallery` 的根节点，其下的所有 DOC 子节点即为画廊动态。前端通过该父节点 ID 查询子节点列表。
+**后端完全不变。** 结构树 + 内容项是业务无关的通用存储——它不知道"笔记"和"画廊"的区别。业务含义完全由前端消费端决定。
 
-关键端点（全部已有）：
-- `GET /api/v1/structure-nodes/:galleryRootId/children` — 获取画廊动态列表
-- `POST /api/v1/structure-nodes` — 在 gallery 根节点下创建新动态节点
-- `GET/PUT /api/v1/contents/:id` — 读取/更新动态内容
+画廊动态在数据层就是普通的文件夹/文档节点 + 内容项 + 资产附件。前端的画廊管理视图只是用不同的 UI（列表+图片网格）来消费同一套 API：
+
+- `GET /api/v1/structure-nodes` + `getChildren()` — 获取指定文件夹下的节点
+- `POST /api/v1/structure-nodes` — 创建节点
+- `GET/PUT /api/v1/contents/:id` — 读取/更新内容
 - `POST/GET /api/v1/contents/:id/assets` — 上传/列出照片
-- `DELETE /api/v1/structure-nodes/:id` — 删除动态
+- `DELETE /api/v1/structure-nodes/:id` — 删除节点
 
-不需要新增后端端点。
+前端需要知道哪个文件夹是画廊的根——这通过前端配置或用户在管理后台中指定，不在后端层面做任何约定。
 
 ### 编辑交互
 
