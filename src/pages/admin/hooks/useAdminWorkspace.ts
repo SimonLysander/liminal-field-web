@@ -71,7 +71,7 @@ export function useAdminWorkspace() {
     setError('');
 
     try {
-      const roots = await structureApi.getRootNodes({ visibility: 'all' });
+      const { children: roots } = await structureApi.getRootNodes({ visibility: 'all' });
       setTree(
         roots.map((node) => ({
           ...node,
@@ -197,7 +197,7 @@ export function useAdminWorkspace() {
     );
 
     try {
-      const children = await structureApi.getChildren(node.id, {
+      const { children } = await structureApi.getChildren(node.id, {
         visibility: 'all',
       });
       setTree((current) =>

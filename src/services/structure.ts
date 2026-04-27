@@ -24,24 +24,7 @@ export interface UpdateStructureNodeDto {
   contentItemId?: string;
   sortOrder?: number;
 }
-const BASE_URL = '/api/v1';
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const hasBody = options?.body !== undefined;
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-      ...options?.headers,
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  if (!text) return undefined as T;
-  return JSON.parse(text);
-}
+import { request } from './request';
 
 function toQueryString(params: Record<string, string | undefined>) {
   const searchParams = new URLSearchParams();
@@ -56,12 +39,17 @@ function toQueryString(params: Record<string, string | undefined>) {
   return queryString ? `?${queryString}` : '';
 }
 
+export interface StructureListResult {
+  path: StructureNode[];
+  children: StructureNode[];
+}
+
 export const structureApi = {
   listNodes: (
     parentId?: string,
     options?: { visibility?: StructureVisibility },
   ) =>
-    request<StructureNode[]>(
+    request<StructureListResult>(
       `/structure-nodes${toQueryString({
         parentId,
         visibility: options?.visibility,

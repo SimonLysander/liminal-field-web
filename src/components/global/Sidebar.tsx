@@ -33,7 +33,9 @@ import {
 
 /* ---------- Data ---------- */
 
-const spaces = ['home', 'notes', 'gallery', 'agent'] as const;
+const spaces = ['notes'] as const;
+// TODO: 暂时隐藏 home / gallery / agent
+// const spaces = ['home', 'notes', 'gallery', 'agent'] as const;
 type Space = (typeof spaces)[number];
 
 const labels: Record<Space, string> = {
@@ -84,7 +86,7 @@ function pathToSpace(pathname: string): Space {
   const seg = pathname.split('/')[1];
   if (seg === 'note') return 'notes';
   if (spaces.includes(seg as Space)) return seg as Space;
-  return 'home';
+  return 'notes';
 }
 
 function spaceToPath(space: Space): string {
@@ -109,7 +111,7 @@ function useStructureLevel(parentId: string | undefined) {
       : structureApi.getRootNodes({ visibility: 'public' });
 
     req
-      .then((data) => { if (!cancelled) setNodes(data); })
+      .then((result) => { if (!cancelled) setNodes(result.children); })
       .catch(() => { if (!cancelled) setNodes([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
 

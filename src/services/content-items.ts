@@ -1,4 +1,4 @@
-﻿const BASE_URL = '/api/v1';
+﻿import { request } from './request';
 
 export type ContentStatus = 'committed' | 'published' | 'archived';
 export type ContentChangeType = 'patch' | 'major';
@@ -120,27 +120,6 @@ export interface ContentHistoryEntry {
   authorEmail: string;
   message: string;
   action: 'commit' | 'unknown';
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const body = options?.body;
-  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
-  const hasBody = body !== undefined && body !== null;
-
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(hasBody && !isFormData ? { 'Content-Type': 'application/json' } : {}),
-      ...options?.headers,
-    },
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  if (!text) return undefined as T;
-  return JSON.parse(text) as T;
 }
 
 function toQueryString(params: Record<string, string | undefined>) {

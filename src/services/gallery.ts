@@ -1,6 +1,6 @@
 // src/services/gallery.ts
 
-const BASE_URL = '/api/v1';
+import { request } from './request';
 
 export interface GalleryPost {
   id: string;
@@ -33,25 +33,6 @@ export interface CreateGalleryPostDto {
 export interface UpdateGalleryPostDto {
   title?: string;
   description?: string;
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const body = options?.body;
-  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
-  const hasBody = body !== undefined && body !== null;
-
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(hasBody && !isFormData ? { 'Content-Type': 'application/json' } : {}),
-      ...options?.headers,
-    },
-  });
-
-  const text = await res.text();
-  if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
-  if (!text) return undefined as T;
-  return JSON.parse(text) as T;
 }
 
 export const galleryApi = {
