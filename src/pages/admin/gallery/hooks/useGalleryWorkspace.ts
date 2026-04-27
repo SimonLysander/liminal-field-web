@@ -1,8 +1,8 @@
 // src/pages/admin/gallery/hooks/useGalleryWorkspace.ts
 
 import { useCallback, useEffect, useState } from 'react';
-import { galleryApi } from '@/services/gallery';
-import type { GalleryPost, GalleryPostDetail } from '@/services/gallery';
+import { galleryApi } from '@/services/workspace';
+import type { GalleryPost, GalleryPostDetail } from '@/services/workspace';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 

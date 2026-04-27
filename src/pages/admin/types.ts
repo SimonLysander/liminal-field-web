@@ -4,7 +4,7 @@ import type {
   ContentVersion,
   ContentStatus,
   EditorDraft,
-} from '@/services/content-items';
+} from '@/services/workspace';
 import type {
   CreateStructureNodeDto,
   StructureNode,

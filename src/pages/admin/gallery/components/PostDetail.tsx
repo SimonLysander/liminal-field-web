@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import type { GalleryPostDetail } from '@/services/gallery';
+import type { GalleryPostDetail } from '@/services/workspace';
 
 /*
  * PostDetail — 画廊动态详情/原地编辑

@@ -24,8 +24,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
 import Topbar from '@/components/global/Topbar';
-import { contentItemsApi } from '@/services/content-items';
-import type { ContentChangeType, ContentDetail, EditorDraft } from '@/services/content-items';
+import { notesApi as contentItemsApi } from '@/services/workspace';
+import type { ContentChangeType, ContentDetail, EditorDraft } from '@/services/workspace';
 import { PlateMarkdownEditor } from './components/PlateEditor';
 import { parseError } from './helpers';
 

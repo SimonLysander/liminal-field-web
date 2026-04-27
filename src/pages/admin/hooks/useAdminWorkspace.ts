@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { contentItemsApi } from '@/services/content-items';
+import { notesApi as contentItemsApi } from '@/services/workspace';
 import type {
   CreateStructureNodeDto,
   UpdateStructureNodeDto,

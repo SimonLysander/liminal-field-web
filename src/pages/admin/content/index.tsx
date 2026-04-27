@@ -9,7 +9,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { smoothBounce } from '@/lib/motion';
-import { contentItemsApi } from '@/services/content-items';
+import { notesApi as contentItemsApi } from '@/services/workspace';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ContentVersionView } from '../components/ContentVersionView';
 import { FolderDetailPanel } from '../components/FolderDetailPanel';
@@ -17,7 +17,7 @@ import { NodeFormModal } from '../components/NodeFormModal';
 import { TreePanel } from '../components/TreePanel';
 import { useAdminWorkspace } from '../hooks/useAdminWorkspace';
 import type { DraftPresence } from '../types';
-import type { ContentHistoryEntry, ListedAsset } from '@/services/content-items';
+import type { ContentHistoryEntry, ListedAsset } from '@/services/workspace';
 
 const ContentAdmin = () => {
   const workspace = useAdminWorkspace();

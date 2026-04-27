@@ -1,7 +1,7 @@
 // src/pages/admin/gallery/components/PostList.tsx
 
 import { RefreshCw, Plus } from 'lucide-react';
-import type { GalleryPost } from '@/services/gallery';
+import type { GalleryPost } from '@/services/workspace';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 

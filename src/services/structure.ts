@@ -50,21 +50,26 @@ export interface DeleteStats {
 }
 
 export const structureApi = {
+  /**
+   * 列出导航节点。scope 可选，传入后作为查询参数过滤特定 workspace 的节点。
+   * 后端 workspace 重构后，不同 scope 的导航树通过 scope 字段区分。
+   */
   listNodes: (
     parentId?: string,
-    options?: { visibility?: StructureVisibility },
+    options?: { visibility?: StructureVisibility; scope?: string },
   ) =>
     request<StructureListResult>(
       `/structure-nodes${toQueryString({
         parentId,
         visibility: options?.visibility,
+        scope: options?.scope,
       })}`,
     ),
 
-  getRootNodes: (options?: { visibility?: StructureVisibility }) =>
+  getRootNodes: (options?: { visibility?: StructureVisibility; scope?: string }) =>
     structureApi.listNodes(undefined, options),
 
-  getChildren: (parentId: string, options?: { visibility?: StructureVisibility }) =>
+  getChildren: (parentId: string, options?: { visibility?: StructureVisibility; scope?: string }) =>
     structureApi.listNodes(parentId, options),
 
   getPathByNodeId: (id: string) =>

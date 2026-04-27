@@ -24,8 +24,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { smoothBounce } from '@/lib/motion';
-import { contentItemsApi } from '@/services/content-items';
-import type { ContentDetail } from '@/services/content-items';
+import { notesApi as contentItemsApi } from '@/services/workspace';
+import type { ContentDetail } from '@/services/workspace';
 import { BookOpen, X, Sparkles } from 'lucide-react';
 
 /* ================================================================

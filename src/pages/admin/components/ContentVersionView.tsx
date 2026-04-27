@@ -8,7 +8,7 @@
  * color from ink-faded to ink for a minimal, Apple-inspired interaction.
  */
 
-import type { ContentStatus } from '@/services/content-items';
+import type { ContentStatus } from '@/services/workspace';
 import type { ContentVersionViewProps } from '../types';
 
 const statusLabel: Record<string, string> = {

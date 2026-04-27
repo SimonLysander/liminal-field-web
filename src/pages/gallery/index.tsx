@@ -14,8 +14,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
-import { galleryApi } from '@/services/gallery';
-import type { GalleryPostDetail } from '@/services/gallery';
+import { galleryApi } from '@/services/workspace';
+import type { GalleryPostDetail } from '@/services/workspace';
 
 const slideVariantsY = {
   enter: (dir: number) => ({ y: dir > 0 ? 40 : -40, opacity: 0 }),
