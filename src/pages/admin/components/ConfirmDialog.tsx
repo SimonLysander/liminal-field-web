@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
+import { structureApi, type DeleteStats } from '@/services/structure';
 import { parseError } from '../helpers';
 import type { TreeNode } from '../types';
 
@@ -21,6 +22,24 @@ export const ConfirmDialog = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [stats, setStats] = useState<DeleteStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    structureApi
+      .getDeleteStats(node.id)
+      .then((result) => {
+        if (!cancelled) setStats(result);
+      })
+      .catch((statsError) => {
+        if (!cancelled) setError(parseError(statsError, '获取统计失败'));
+      })
+      .finally(() => {
+        if (!cancelled) setStatsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [node.id]);
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -32,6 +51,8 @@ export const ConfirmDialog = ({
       setLoading(false);
     }
   };
+
+  const hasDescendants = stats && (stats.folderCount + stats.docCount > 1);
 
   return (
     <div
@@ -57,9 +78,18 @@ export const ConfirmDialog = ({
           <h3 className="mt-1 font-semibold" style={{ color: 'var(--ink)', fontSize: 'var(--text-lg)' }}>
             确认删除「{node.name}」？
           </h3>
-          <p className="mt-2 leading-relaxed" style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-sm)' }}>
-            如果该节点仍有子节点，后端将拒绝此操作。
-          </p>
+          <div className="mt-2 leading-relaxed" style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-sm)' }}>
+            {statsLoading ? (
+              <span>正在统计...</span>
+            ) : stats && hasDescendants ? (
+              <span>
+                将删除 <strong style={{ color: 'var(--mark-red)' }}>{stats.folderCount}</strong> 个主题、
+                <strong style={{ color: 'var(--mark-red)' }}>{stats.docCount}</strong> 个内容节点，此操作不可撤销。
+              </span>
+            ) : (
+              <span>此操作不可撤销。</span>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -82,7 +112,7 @@ export const ConfirmDialog = ({
             className="rounded-lg px-4 py-2 font-medium transition-opacity duration-150 disabled:opacity-50"
             style={{ background: 'var(--mark-red)', color: '#fff', fontSize: 'var(--text-sm)' }}
             onClick={() => void handleConfirm()}
-            disabled={loading}
+            disabled={loading || statsLoading}
           >
             {loading ? '删除中...' : '删除'}
           </button>

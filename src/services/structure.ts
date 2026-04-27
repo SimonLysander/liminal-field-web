@@ -44,6 +44,11 @@ export interface StructureListResult {
   children: StructureNode[];
 }
 
+export interface DeleteStats {
+  folderCount: number;
+  docCount: number;
+}
+
 export const structureApi = {
   listNodes: (
     parentId?: string,
@@ -79,6 +84,9 @@ export const structureApi = {
       method: 'PUT',
       body: JSON.stringify(dto),
     }),
+  getDeleteStats: (id: string) =>
+    request<DeleteStats>(`/structure-nodes/${id}/delete-stats`),
+
   deleteNode: (id: string) =>
     request<void>(`/structure-nodes/${id}`, { method: 'DELETE' }),
 
