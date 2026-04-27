@@ -6,8 +6,8 @@ import { FileText, Image } from 'lucide-react';
 /*
  * IconRail — 48px 窄图标导航栏
  *
- * 与右侧内容面板共享 sidebar-bg 背景，形成一体的浮动卡片。
- * 图标栏左圆角（radius-lg），内容面板右圆角。
+ * 全高齐平布局，与右侧 TreePanel/PostList 共享 sidebar-bg 背景色。
+ * 右侧 separator 边线将其与相邻面板分隔。
  * 选中态：shelf 背景 + ink 图标色。未选中：ink-ghost 图标色。
  */
 
@@ -31,7 +31,7 @@ export function IconRail() {
       style={{
         width: 48,
         background: 'var(--sidebar-bg)',
-        borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)',
+        borderRight: '0.5px solid var(--separator)',
       }}
     >
       {/* Logo */}

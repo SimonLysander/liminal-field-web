@@ -183,8 +183,9 @@ const plugins = [
 const ICON = { size: 15, strokeWidth: 1.5 } as const;
 
 type ToolItem = { icon: React.ReactNode; action: () => void; title: string };
+type PlateEditorInstance = NonNullable<ReturnType<typeof usePlateEditor>>;
 
-function Toolbar({ editor }: { editor: ReturnType<typeof usePlateEditor> }) {
+function Toolbar({ editor }: { editor: PlateEditorInstance }) {
   const groups: ToolItem[][] = [
     [
       { icon: 'H1', action: () => editor.tf.toggleBlock('h1'), title: '一级标题' },
@@ -277,6 +278,7 @@ export function PlateMarkdownEditor({
   );
 
   const handleChange = useCallback(() => {
+    if (!editor) return;
     try {
       const md = serializeMd(editor);
       onChange(md);
@@ -284,6 +286,8 @@ export function PlateMarkdownEditor({
       /* Serialize can fail during rapid edits — skip, next change will catch up */
     }
   }, [editor, onChange]);
+
+  if (!editor) return null;
 
   return (
     <Plate editor={editor} onValueChange={handleChange}>

@@ -9,6 +9,7 @@
  */
 
 import type { ContentStatus } from '@/services/workspace';
+import MarkdownBody from '@/components/shared/MarkdownBody';
 import type { ContentVersionViewProps } from '../types';
 
 const statusLabel: Record<string, string> = {
@@ -199,16 +200,12 @@ export const ContentVersionView = ({
               : new Date(content.updatedAt).toLocaleString('zh-CN')}
           </span>
         </div>
-        <pre
-          className="max-h-[500px] overflow-auto whitespace-pre-wrap p-5 leading-[1.8]"
-          style={{
-            color: 'var(--ink-light)',
-            fontSize: 'var(--text-xs)',
-            fontFamily: 'var(--font-mono)',
-          }}
+        <div
+          className="max-h-[500px] overflow-auto p-5 leading-[1.8]"
+          style={{ fontSize: 'var(--text-base)' }}
         >
-          {(preview ? preview.bodyMarkdown : content.bodyMarkdown) || '--'}
-        </pre>
+          <MarkdownBody markdown={(preview ? preview.bodyMarkdown : content.bodyMarkdown) || ''} />
+        </div>
       </div>
     </div>
   );

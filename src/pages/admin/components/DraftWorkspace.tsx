@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { PlateMarkdownEditor } from './PlateEditor';
 import type { DraftWorkspaceProps } from '../types';
-import type { ContentChangeType } from '@/services/workspace';
 
 export const DraftWorkspace = ({
-  node,
   formalStatus,
   draftState,
   loading,

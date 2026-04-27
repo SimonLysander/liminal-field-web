@@ -332,6 +332,7 @@ export const TreePanel = ({
       className="flex w-[200px] shrink-0 flex-col overflow-hidden"
       style={{
         background: 'var(--sidebar-bg)',
+        borderRight: '0.5px solid var(--separator)',
       }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}

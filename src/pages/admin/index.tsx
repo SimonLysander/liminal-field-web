@@ -1,40 +1,25 @@
 /*
  * AdminShell — 管理后台壳子
  *
- * 布局：图标栏 (48px) + 子路由内容
- * 图标栏独立浮动卡片（左侧圆角），子路由各自渲染内容面板。
- * 通过 sidebar-bg 背景色 + 无间距，IconRail 和子页面的面板视觉上连为一体。
+ * 布局：IconRail (48px) + 子路由全高展开。
+ * IconRail 和子页面的 TreePanel/PostList 共享 sidebar-bg 背景色，
+ * 通过 separator 边线划分区域。无浮动卡片效果——admin 侧采用齐平
+ * 全高面板，保证导航不被 Topbar 遮挡。
+ * Topbar 由各子页面自行放置在内容区列顶部。
  */
 
 import { Outlet } from 'react-router-dom';
-import Topbar from '@/components/global/Topbar';
 import { IconRail } from './components/IconRail';
 
 const AdminShell = () => {
   return (
     <div className="flex h-screen" style={{ background: 'var(--paper)' }}>
-      {/* Left: icon rail — floating card with left radius */}
-      <div
-        className="flex shrink-0"
-        style={{
-          margin: '8px 0 8px 8px',
-          background: 'var(--sidebar-bg)',
-          borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <IconRail />
-      </div>
+      {/* Left: IconRail — 全高，sidebar-bg，右侧 separator 与 TreePanel 分隔 */}
+      <IconRail />
 
-      {/* Right: Topbar + child route content */}
-      <div
-        className="flex flex-1 flex-col overflow-hidden"
-        style={{ background: 'var(--paper)' }}
-      >
-        <Topbar />
-        <div className="flex flex-1 overflow-hidden">
-          <Outlet />
-        </div>
+      {/* Right: 子路由全高展开（TreePanel + Topbar + Content） */}
+      <div className="flex flex-1 overflow-hidden">
+        <Outlet />
       </div>
     </div>
   );

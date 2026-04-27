@@ -33,7 +33,7 @@ export function PostList({
   return (
     <div
       className="flex w-[200px] shrink-0 flex-col overflow-hidden"
-      style={{ background: 'var(--sidebar-bg)' }}
+      style={{ background: 'var(--sidebar-bg)', borderRight: '0.5px solid var(--separator)' }}
     >
       {/* Header */}
       <div className="px-5 pt-5 pb-1">

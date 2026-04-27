@@ -23,7 +23,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
-import Topbar from '@/components/global/Topbar';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type { ContentChangeType, ContentDetail, EditorDraft } from '@/services/workspace';
 import { PlateMarkdownEditor } from './components/PlateEditor';
@@ -58,7 +57,7 @@ const DraftEditPage = () => {
   const [lastSavedAt, setLastSavedAt] = useState('');
   const [autosaveError, setAutosaveError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
-  const [resetKey, setResetKey] = useState(0);
+  const [resetKey] = useState(0);
   const [showCommitDialog, setShowCommitDialog] = useState(false);
 
   /* Parse headings from markdown for outline — skips code blocks */
@@ -328,7 +327,7 @@ const DraftEditPage = () => {
 
         {/* Body — editor + right outline */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="mx-auto max-w-[740px] px-10 pb-40 pt-10">
               <PlateMarkdownEditor
                 key={resetKey}

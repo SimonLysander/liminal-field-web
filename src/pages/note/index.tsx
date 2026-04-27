@@ -18,14 +18,13 @@
  *   ai-fab / ai-chat-panel CSS classes for midnight theme overrides.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { smoothBounce } from '@/lib/motion';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type { ContentDetail } from '@/services/workspace';
+import MarkdownBody from '@/components/shared/MarkdownBody';
 import { BookOpen, X, Sparkles } from 'lucide-react';
 
 /* ================================================================
@@ -75,6 +74,8 @@ function NoteReader({ id }: { id: string }) {
   const centerRef = useRef<HTMLDivElement>(null);
   const aiInputRef = useRef<HTMLInputElement>(null);
 
+  const [toc, setToc] = useState<TocEntry[]>([]);
+
   useEffect(() => {
     setLoading(true);
     setError('');
@@ -85,41 +86,57 @@ function NoteReader({ id }: { id: string }) {
       .finally(() => setLoading(false));
   }, [id]);
 
-  /* 从 markdown 提取标题构建 TOC — 跳过代码块 */
-  const toc = useMemo<TocEntry[]>(() => {
-    if (!content) return [];
-    let inCodeBlock = false;
-    return content.bodyMarkdown
-      .split('\n')
-      .reduce<TocEntry[]>((acc, line) => {
-        if (line.startsWith('```')) {
-          inCodeBlock = !inCodeBlock;
-          return acc;
-        }
-        if (inCodeBlock) return acc;
-        const m = line.match(/^(#{1,3})\s+(.+)$/);
-        if (m) {
-          const text = m[2].trim();
-          acc.push({
-            level: m[1].length,
-            text,
-            id: `heading-${acc.length}`,
-          });
-        }
-        return acc;
-      }, []);
-  }, [content]);
+  /*
+   * TOC 从渲染后的 DOM 中提取，而不是用正则解析原始 markdown。
+   * 原因：正则解析和 react-markdown 对标题的识别存在差异
+   * （如 blockquote 内标题、setext 风格标题等），导致 TOC 条目
+   * 与 DOM 中的 heading 元素错位。从 DOM 提取保证两侧 100% 同源。
+   *
+   * ��赖包含 loading：setContent 和 setLoading 在 Promise 链中可能分属
+   * 不同微任务，若未 batch 则 content 变化时 MarkdownBody 尚未渲染
+   * （loading spinner 仍在），此时读 DOM 得到空列表。加入 loading 确保
+   * spinner 切走后（MarkdownBody 已渲染）再读一次 DOM。
+   */
+  useLayoutEffect(() => {
+    const container = centerRef.current;
+    if (!container || !content || loading) {
+      setToc([]);
+      return;
+    }
+    const els = container.querySelectorAll<HTMLElement>('[data-heading-id]');
+    const entries: TocEntry[] = [];
+    els.forEach((el) => {
+      const tag = el.tagName.toLowerCase();
+      const level = tag === 'h1' ? 1 : tag === 'h2' ? 2 : 3;
+      entries.push({
+        level,
+        text: el.textContent || '',
+        id: el.getAttribute('data-heading-id') || '',
+      });
+    });
+    setToc(entries);
+  }, [content, loading]);
 
-  /* Scroll spy — 监听滚动确定当前 TOC 位置 */
+  /*
+   * Scroll spy — 监听滚动确定当前 TOC 高亮位置。
+   * 使用 getBoundingClientRect 而非 offsetTop：offsetTop 相对于 offsetParent
+   * （最近 positioned 祖先），在嵌套结构中不一定是滚动容器，导致定位错乱。
+   * getBoundingClientRect 始终返回视口坐标，不受 DOM 嵌套影响。
+   */
+  /*
+   * Scroll spy 阈值：标题的 getBoundingClientRect().top 必须 <= 容器顶部 + 50px
+   * 才被视为"当前激活"。50px 而非更大的值（如 120px）是为了避免紧邻的子标题
+   * 同时落入阈值范围内，导致点击父标题后高亮跳到子标题。
+   */
   const handleScroll = useCallback(() => {
     const container = centerRef.current;
     if (!container || toc.length === 0) return;
-    const scrollTop = container.scrollTop + 120;
+    const threshold = container.getBoundingClientRect().top + 50;
     const headingEls = container.querySelectorAll('[data-heading-id]');
 
     for (let i = headingEls.length - 1; i >= 0; i--) {
       const el = headingEls[i] as HTMLElement;
-      if (el.offsetTop <= scrollTop) {
+      if (el.getBoundingClientRect().top <= threshold) {
         setActiveToc(el.getAttribute('data-heading-id') || '');
         return;
       }
@@ -134,11 +151,23 @@ function NoteReader({ id }: { id: string }) {
     return () => el.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
+  /**
+   * 点击 TOC 条目时滚动到对应标题，并短暂高亮目标标题。
+   * 高亮的意义：相邻标题（如 h2 紧接 h3）间距很小，滚动位移几乎不可感知，
+   * 闪烁效果让用户确认"确实跳到了这里"。
+   */
   const scrollToHeading = (headingId: string) => {
     const el = centerRef.current?.querySelector(`[data-heading-id="${headingId}"]`) as HTMLElement | null;
     if (!el || !centerRef.current) return;
     const top = el.getBoundingClientRect().top - centerRef.current.getBoundingClientRect().top + centerRef.current.scrollTop - 16;
+
     centerRef.current.scrollTo({ top, behavior: 'smooth' });
+
+    // 通过 CSS class 触发高亮动画（keyframe toc-flash），不受 React style 管理干扰
+    el.classList.remove('toc-highlight');
+    void el.offsetWidth;
+    el.classList.add('toc-highlight');
+    el.addEventListener('animationend', () => el.classList.remove('toc-highlight'), { once: true });
   };
 
   /* 标题信息 */
@@ -211,7 +240,7 @@ function NoteReader({ id }: { id: string }) {
 
         {/* Markdown 正文 */}
         <div className="note-prose leading-[1.9]" style={{ color: 'var(--ink-light)', fontSize: 'var(--text-lg)' }}>
-          <MarkdownBody markdown={content.bodyMarkdown} toc={toc} />
+          <MarkdownBody markdown={content.bodyMarkdown} />
         </div>
        </div>
       </div>
@@ -317,119 +346,3 @@ function NoteReader({ id }: { id: string }) {
   );
 }
 
-/* ---------- Markdown Body ---------- */
-
-/** 渲染 markdown，同时为标题注入 data-heading-id 供 scroll spy 使用 */
-function MarkdownBody({ markdown, toc }: { markdown: string; toc: TocEntry[] }) {
-  let headingIdx = 0;
-
-  return (
-    <Markdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h1: ({ children, ...props }) => {
-          const entry = toc[headingIdx++];
-          return (
-            <h1
-              {...props}
-              data-heading-id={entry?.id}
-              className="mb-3 mt-8 font-bold leading-snug"
-              style={{ color: 'var(--ink)', letterSpacing: '-0.02em', fontSize: 'var(--text-3xl)' }}
-            >
-              {children}
-            </h1>
-          );
-        },
-        h2: ({ children, ...props }) => {
-          const entry = toc[headingIdx++];
-          return (
-            <h2
-              {...props}
-              data-heading-id={entry?.id}
-              className="mb-2.5 mt-7 font-semibold leading-snug"
-              style={{ color: 'var(--ink)', letterSpacing: '-0.015em', fontSize: 'var(--text-xl)' }}
-            >
-              {children}
-            </h2>
-          );
-        },
-        h3: ({ children, ...props }) => {
-          const entry = toc[headingIdx++];
-          return (
-            <h3
-              {...props}
-              data-heading-id={entry?.id}
-              className="mb-2 mt-6 font-semibold"
-              style={{ color: 'var(--ink)', fontSize: 'var(--text-md)' }}
-            >
-              {children}
-            </h3>
-          );
-        },
-        p: ({ children }) => (
-          <p className="mb-5 text-justify" style={{ hangingPunctuation: 'allow-end' }}>{children}</p>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote
-            className="my-4 border-l-[3px] py-0.5 pl-5"
-            style={{ borderColor: 'var(--ink-ghost)', color: 'var(--ink-faded)' }}
-          >
-            {children}
-          </blockquote>
-        ),
-        pre: ({ children }) => (
-          <pre
-            className="my-4 overflow-x-auto whitespace-pre-wrap rounded-xl p-4"
-            style={{ background: 'var(--shelf)', fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: 1.7, color: 'var(--ink-light)' }}
-          >
-            {children}
-          </pre>
-        ),
-        code: ({ className, children, ...props }) => {
-          /* 块级代码已由 pre 包裹，这里只处理内联代码 */
-          if (className) return <code className={className} {...props}>{children}</code>;
-          return (
-            <code
-              className="rounded-md px-1.5 py-[2px] text-[14px]"
-              style={{ background: 'var(--shelf)', fontFamily: 'var(--font-mono)', color: 'var(--ink-light)' }}
-              {...props}
-            >
-              {children}
-            </code>
-          );
-        },
-        ul: ({ children }) => <ul className="my-3 list-disc pl-7">{children}</ul>,
-        ol: ({ children }) => <ol className="my-3 list-decimal pl-7">{children}</ol>,
-        li: ({ children }) => <li className="py-0.5">{children}</li>,
-        hr: () => <hr className="my-8" style={{ borderColor: 'var(--separator)' }} />,
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors duration-150"
-            style={{ color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: '3px' }}
-          >
-            {children}
-          </a>
-        ),
-        strong: ({ children }) => <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>{children}</strong>,
-        table: ({ children }) => (
-          <div className="my-4 overflow-x-auto">
-            <table className="w-full text-[14px]" style={{ borderCollapse: 'collapse' }}>{children}</table>
-          </div>
-        ),
-        th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-[14px] font-semibold" style={{ borderBottom: '1px solid var(--separator)', color: 'var(--ink-faded)' }}>
-            {children}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td className="px-3 py-2" style={{ borderBottom: '0.5px solid var(--separator)' }}>{children}</td>
-        ),
-      }}
-    >
-      {markdown}
-    </Markdown>
-  );
-}

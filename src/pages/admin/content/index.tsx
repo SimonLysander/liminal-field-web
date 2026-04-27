@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { smoothBounce } from '@/lib/motion';
 import { notesApi as contentItemsApi } from '@/services/workspace';
+import Topbar from '@/components/global/Topbar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ContentVersionView } from '../components/ContentVersionView';
 import { FolderDetailPanel } from '../components/FolderDetailPanel';
@@ -53,11 +54,12 @@ const ContentAdmin = () => {
         onMoveNode={workspace.handleMoveNode}
       />
 
-      {/* Main content area */}
+      {/* Main content area — Topbar 在此列顶部，不覆盖 TreePanel */}
       <main
         className="relative z-0 flex flex-1 flex-col overflow-hidden"
         style={{ background: 'var(--paper)' }}
       >
+        <Topbar />
         <div className="flex flex-1 overflow-hidden">
           {/* Center — content preview */}
           <div className="flex flex-1 flex-col overflow-hidden">

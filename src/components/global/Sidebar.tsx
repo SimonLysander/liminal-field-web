@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { structureApi } from '@/services/structure';
 import type { StructureNode } from '@/services/structure';
@@ -33,10 +33,10 @@ import {
 
 /* ---------- Data ---------- */
 
-const spaces = ['notes'] as const;
+type Space = 'home' | 'notes' | 'gallery' | 'agent';
+const spaces: Space[] = ['notes'];
 // TODO: 暂时隐藏 home / gallery / agent
 // const spaces = ['home', 'notes', 'gallery', 'agent'] as const;
-type Space = (typeof spaces)[number];
 
 const labels: Record<Space, string> = {
   home: '首页',

@@ -7,6 +7,7 @@
  * 渲染在 AdminShell 的 <Outlet /> 中。
  */
 
+import Topbar from '@/components/global/Topbar';
 import { useGalleryWorkspace } from './hooks/useGalleryWorkspace';
 import { PostList } from './components/PostList';
 import { PostDetail } from './components/PostDetail';
@@ -26,8 +27,8 @@ export default function GalleryAdmin() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Left — post list */}
+    <>
+      {/* Left — post list (full height, not blocked by Topbar) */}
       <PostList
         posts={ws.posts}
         loading={ws.loading}
@@ -39,55 +40,61 @@ export default function GalleryAdmin() {
         onReload={() => void ws.reload()}
       />
 
-      {/* Center — post detail or empty/error state */}
-      {ws.error && !ws.selectedPost && (
-        <div className="flex flex-1 items-center justify-center">
-          <div style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>
-            {ws.error}
-          </div>
-        </div>
-      )}
-      {!ws.error && ws.selectedPost ? (
-        <PostDetail
-          post={ws.selectedPost}
-          editing={ws.editing}
-          actionMessage={ws.actionMessage}
-          onEdit={() => ws.setEditing(true)}
-          onCancelEdit={() => ws.setEditing(false)}
-          onSave={(t, d) => void ws.updatePost(t, d)}
-          onDelete={() => void handleDelete()}
-          onPublish={() => void ws.publishPost()}
-          onUnpublish={() => void ws.unpublishPost()}
-          onUploadPhoto={(f) => void ws.uploadPhoto(f)}
-          onDeletePhoto={(id) => void ws.deletePhoto(id)}
-        />
-      ) : !ws.error ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>
-            选择一条动态，或点击"新建"
-          </div>
-        </div>
-      ) : null}
+      {/* Right — Topbar + content area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Topbar />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Center — post detail or empty/error state */}
+          {ws.error && !ws.selectedPost && (
+            <div className="flex flex-1 items-center justify-center">
+              <div style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>
+                {ws.error}
+              </div>
+            </div>
+          )}
+          {!ws.error && ws.selectedPost ? (
+            <PostDetail
+              post={ws.selectedPost}
+              editing={ws.editing}
+              actionMessage={ws.actionMessage}
+              onEdit={() => ws.setEditing(true)}
+              onCancelEdit={() => ws.setEditing(false)}
+              onSave={(t, d) => void ws.updatePost(t, d)}
+              onDelete={() => void handleDelete()}
+              onPublish={() => void ws.publishPost()}
+              onUnpublish={() => void ws.unpublishPost()}
+              onUploadPhoto={(f) => void ws.uploadPhoto(f)}
+              onDeletePhoto={(id) => void ws.deletePhoto(id)}
+            />
+          ) : !ws.error ? (
+            <div className="flex flex-1 items-center justify-center">
+              <div style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>
+                选择一条动态，或点击"新建"
+              </div>
+            </div>
+          ) : null}
 
-      {/* Right — info panel */}
-      {ws.selectedPost && (
-        <aside
-          className="flex w-[200px] shrink-0 flex-col overflow-y-auto px-4 py-7"
-          style={{ borderLeft: '0.5px solid var(--separator)' }}
-        >
-          <div
-            className="mb-3.5 font-semibold uppercase"
-            style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.06em' }}
-          >
-            信息
-          </div>
-          <InfoRow label="状态" value={ws.selectedPost.status === 'published' ? '已发布' : '草稿'} />
-          <InfoRow label="照片数" value={`${ws.selectedPost.photoCount} 张`} />
-          <InfoRow label="创建时间" value={new Date(ws.selectedPost.createdAt).toLocaleDateString('zh-CN')} />
-          <InfoRow label="最后编辑" value={new Date(ws.selectedPost.updatedAt).toLocaleString('zh-CN')} />
-        </aside>
-      )}
-    </div>
+          {/* Right — info panel */}
+          {ws.selectedPost && (
+            <aside
+              className="flex w-[200px] shrink-0 flex-col overflow-y-auto px-4 py-7"
+              style={{ borderLeft: '0.5px solid var(--separator)' }}
+            >
+              <div
+                className="mb-3.5 font-semibold uppercase"
+                style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.06em' }}
+              >
+                信息
+              </div>
+              <InfoRow label="状态" value={ws.selectedPost.status === 'published' ? '已发布' : '草稿'} />
+              <InfoRow label="照片数" value={`${ws.selectedPost.photoCount} 张`} />
+              <InfoRow label="创建时间" value={new Date(ws.selectedPost.createdAt).toLocaleDateString('zh-CN')} />
+              <InfoRow label="最后编辑" value={new Date(ws.selectedPost.updatedAt).toLocaleString('zh-CN')} />
+            </aside>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
