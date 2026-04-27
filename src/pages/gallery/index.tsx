@@ -11,7 +11,7 @@
  * 保留宝丽来卡片展示风格和方向感知滑动动画。
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
 import { galleryApi } from '@/services/gallery';
@@ -72,6 +72,24 @@ export default function GalleryPage() {
     });
   }, [post]);
 
+  const tickRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  useEffect(() => {
+    tickRefs.current[postIdx]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [postIdx]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowLeft':  navigatePhoto(-1); break;
+        case 'ArrowRight': navigatePhoto(1);  break;
+        case 'ArrowUp':    e.preventDefault(); navigatePost(-1); break;
+        case 'ArrowDown':  e.preventDefault(); navigatePost(1);  break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigatePhoto, navigatePost]);
+
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -111,14 +129,13 @@ export default function GalleryPage() {
                 padding: '8px 8px 32px',
                 borderRadius: 'var(--radius-md)',
                 boxShadow: 'var(--shadow-md)',
-                maxWidth: '75%',
               }}
             >
               <div
                 className="relative flex w-full items-center justify-center overflow-hidden"
                 style={{
                   borderRadius: 'var(--radius-md)',
-                  minHeight: 320,
+                  height: '62vh',
                   aspectRatio: '4/3',
                   background: 'var(--paper-dark)',
                 }}
@@ -148,14 +165,14 @@ export default function GalleryPage() {
                 {post.photos.length > 1 && (
                   <>
                     <div
-                      className="absolute left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[10px] opacity-0 transition-all duration-250 hover:opacity-100"
+                      className="absolute left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[10px] opacity-40 transition-all duration-250 hover:opacity-100"
                       style={{ background: 'rgba(0,0,0,0.3)', color: '#fff' }}
                       onClick={() => navigatePhoto(-1)}
                     >
                       ‹
                     </div>
                     <div
-                      className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[10px] opacity-0 transition-all duration-250 hover:opacity-100"
+                      className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[10px] opacity-40 transition-all duration-250 hover:opacity-100"
                       style={{ background: 'rgba(0,0,0,0.3)', color: '#fff' }}
                       onClick={() => navigatePhoto(1)}
                     >
@@ -191,7 +208,7 @@ export default function GalleryPage() {
             {/* Description */}
             {post.description && (
               <motion.div
-                className="mt-6 max-w-[75%] text-center leading-relaxed"
+                className="mt-6 text-center leading-relaxed"
                 style={{ color: 'var(--ink-light)', fontSize: 'var(--text-md)', letterSpacing: '-0.01em' }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -224,36 +241,62 @@ export default function GalleryPage() {
         )}
       </div>
 
-      {/* Right — timeline (shows post list) */}
+      {/* Right — timeline axis */}
       <div
-        className="flex w-[200px] shrink-0 flex-col overflow-y-auto px-4 py-10"
+        className="relative flex w-[72px] shrink-0 flex-col"
         style={{ borderLeft: '0.5px solid var(--separator)' }}
       >
+        {/* Axis line */}
         <div
-          className="mb-3 text-[12px] font-semibold uppercase"
-          style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
-        >
-          动态
-        </div>
-        <div className="flex flex-col gap-0.5">
-          {posts.map((p, i) => (
-            <div
-              key={p.id}
-              className="cursor-pointer rounded-lg px-2.5 py-2 transition-all duration-150"
-              style={{
-                background: i === postIdx ? 'var(--shelf)' : 'transparent',
-                color: i === postIdx ? 'var(--ink)' : 'var(--ink-faded)',
-                fontWeight: i === postIdx ? 500 : 400,
-                fontSize: 'var(--text-sm)',
-              }}
-              onClick={() => { setPostDir(i > postIdx ? 1 : -1); setPostIdx(i); setPhotoIdx(0); }}
-            >
-              <div className="truncate">{p.title}</div>
-              <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--ink-ghost)', marginTop: 2 }}>
-                {p.photoCount} 张 · {new Date(p.createdAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}
-              </div>
-            </div>
-          ))}
+          className="absolute left-[20px]"
+          style={{ top: 0, bottom: 0, width: 1, background: 'var(--separator)' }}
+        />
+
+        {/* Scrollable tick area — selected tick auto-centers */}
+        <div className="flex flex-1 flex-col items-start overflow-y-auto py-6">
+          {/* Top spacer so first item can center */}
+          <div className="shrink-0" style={{ minHeight: '40vh' }} />
+
+          {posts.map((p, i) => {
+            const active = i === postIdx;
+            const date = new Date(p.createdAt);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return (
+              <button
+                key={p.id}
+                ref={(el) => { tickRefs.current[i] = el; }}
+                className="relative flex shrink-0 items-center"
+                style={{ height: 28, paddingLeft: 16 }}
+                onClick={() => { setPostDir(i > postIdx ? 1 : -1); setPostIdx(i); setPhotoIdx(0); }}
+              >
+                {/* Dot */}
+                <div
+                  className="rounded-full transition-all duration-200"
+                  style={{
+                    width: active ? 9 : 5,
+                    height: active ? 9 : 5,
+                    background: active ? 'var(--ink)' : 'var(--ink-ghost)',
+                  }}
+                />
+                {/* Date label */}
+                <span
+                  className="ml-2 whitespace-nowrap transition-all duration-150"
+                  style={{
+                    fontSize: 'var(--text-2xs)',
+                    color: active ? 'var(--ink)' : 'var(--ink-ghost)',
+                    fontWeight: active ? 600 : 400,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {month}.{day}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Bottom spacer so last item can center */}
+          <div className="shrink-0" style={{ minHeight: '40vh' }} />
         </div>
       </div>
     </div>

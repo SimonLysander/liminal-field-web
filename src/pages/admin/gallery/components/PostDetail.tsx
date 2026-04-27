@@ -55,8 +55,10 @@ export function PostDetail({
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) onUploadPhoto(file);
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach((file) => onUploadPhoto(file));
+    }
     e.target.value = '';
   };
 
@@ -154,6 +156,7 @@ export function PostDetail({
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={handleFileSelect}
           />
