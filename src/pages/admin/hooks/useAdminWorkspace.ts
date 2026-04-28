@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isApiError } from '@/services/request';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type {
   CreateStructureNodeDto,
@@ -99,13 +100,12 @@ export function useAdminWorkspace() {
       });
       return draft;
     } catch (draftError) {
-      const message = parseError(draftError, '加载草稿失败');
-      if (!message.includes('404')) {
-        throw draftError;
+      /* 404 = 该内容项尚无草稿，属于正常状态 */
+      if (isApiError(draftError, 404)) {
+        setDraftPresence(EMPTY_DRAFT_PRESENCE);
+        return null;
       }
-
-      setDraftPresence(EMPTY_DRAFT_PRESENCE);
-      return null;
+      throw draftError;
     }
   }, []);
 
@@ -257,7 +257,7 @@ export function useAdminWorkspace() {
         title: docCreate.title,
         summary: docCreate.summary,
         status: 'committed',
-        bodyMarkdown: `# ${docCreate.title}\n`,
+        bodyMarkdown: '',
         changeNote: '初始内容',
         changeType: 'major',
       });

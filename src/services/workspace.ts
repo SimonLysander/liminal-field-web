@@ -76,7 +76,7 @@ export interface ContentDetail {
 
 export interface CreateContentDto {
   title: string;
-  summary: string;
+  summary?: string;
   status: ContentStatus;
   bodyMarkdown: string;
   changeNote?: string;

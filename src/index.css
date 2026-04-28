@@ -8,8 +8,18 @@
 
 @import "tailwindcss";
 
-/* Tailwind rounded-* 覆盖 — 统一使用分档圆角系统 */
+/*
+ * Tailwind @theme — 将设计系统 CSS 变量桥接为 Tailwind utility class。
+ * 所有值引用 [data-theme] / :root 上的 CSS 变量，运行时主题切换自动生效。
+ *
+ * 生成规则：
+ *   --color-ink     → text-ink, bg-ink, border-ink ...
+ *   --font-size-lg  → text-lg (font-size)
+ *   --shadow-sm     → shadow-sm
+ *   --font-family-* → font-sans, font-mono ...
+ */
 @theme {
+  /* ── 圆角 ── */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 8px;
@@ -19,6 +29,67 @@
   --radius-2xl: 12px;
   --radius-3xl: 12px;
   --radius-4xl: 12px;
+
+  /* ── 颜色：表面色 ── */
+  --color-paper: var(--paper);
+  --color-paper-dark: var(--paper-dark);
+  --color-paper-shadow: var(--paper-shadow);
+  --color-paper-light: var(--paper-light);
+  --color-paper-white: var(--paper-white);
+  --color-shelf: var(--shelf);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-bar-bg: var(--bar-bg);
+
+  /* ── 颜色：墨色四级 ── */
+  --color-ink: var(--ink);
+  --color-ink-light: var(--ink-light);
+  --color-ink-faded: var(--ink-faded);
+  --color-ink-ghost: var(--ink-ghost);
+
+  /* ── 颜色：强调色 ── */
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+  --color-accent-contrast: var(--accent-contrast);
+
+  /* ── 颜色：语义标记色 ── */
+  --color-mark-red: var(--mark-red);
+  --color-mark-blue: var(--mark-blue);
+  --color-mark-green: var(--mark-green);
+
+  /* ── 颜色：结构线 ── */
+  --color-spine: var(--spine);
+  --color-spine-strong: var(--spine-strong);
+  --color-separator: var(--separator);
+  --color-box-border: var(--box-border);
+
+  /* ── 颜色：其他 ── */
+  --color-photo-border: var(--photo-border);
+
+  /* ── 字号（覆盖 Tailwind 默认 text-* 字号）── */
+  --font-size-2xs: var(--text-2xs);
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-md: var(--text-md);
+  --font-size-lg: var(--text-lg);
+  --font-size-xl: var(--text-xl);
+  --font-size-2xl: var(--text-2xl);
+  --font-size-3xl: var(--text-3xl);
+  --font-size-4xl: var(--text-4xl);
+  --font-size-5xl: var(--text-5xl);
+
+  /* ── 字体族 ── */
+  --font-family-sans: var(--font-sans);
+  --font-family-serif: var(--font-serif);
+  --font-family-mono: var(--font-mono);
+  --font-family-title: var(--font-title);
+
+  /* ── 阴影 ── */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
 }
 
 /* ========== Design Tokens — Apple-inspired, Monochrome ========== */

@@ -6,6 +6,20 @@ export interface ApiResponse<T = unknown> {
   data: T;
 }
 
+/** 带 code 的 Error，上层可通过 isApiError() 精确判断错误类型 */
+export class ApiError extends Error {
+  constructor(
+    public readonly code: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export function isApiError(error: unknown, code?: number): error is ApiError {
+  return error instanceof ApiError && (code === undefined || error.code === code);
+}
+
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const body = options?.body;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
@@ -21,15 +35,14 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
 
   const text = await res.text();
   if (!text) {
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
     return undefined as T;
   }
 
   const json = JSON.parse(text) as ApiResponse<T>;
 
-  // 业务错误：code !== 0
   if (json.code !== 0) {
-    throw new Error(json.msg || `业务错误 (code: ${json.code})`);
+    throw new ApiError(json.code, json.msg || `业务错误 (code: ${json.code})`);
   }
 
   return json.data;

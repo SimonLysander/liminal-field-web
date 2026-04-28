@@ -29,7 +29,9 @@ import {
   Folder,
   File,
   ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 
 /* ---------- Data ---------- */
 
@@ -128,11 +130,20 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const active = pathToSpace(location.pathname);
 
-  /* 从 pathname 解析当前 noteId
+  /* 从 pathname 解析当前 noteId / topicId
    * Sidebar 渲染在 <Routes> 外层，useParams() 不可用，
-   * 所以用正则从 location.pathname 提取 /note/:id */
+   * 用正则从 location.pathname 提取：
+   *   /note/:noteId                → 根级文稿
+   *   /note/topic/:topicId         → 主题目录
+   *   /note/topic/:topicId/:noteId → 主题下的文稿 */
+  const activeTopicId = (() => {
+    const m = location.pathname.match(/^\/note\/topic\/([^/]+)/);
+    return m ? m[1] : null;
+  })();
+
   const activeNoteId = (() => {
-    const m = location.pathname.match(/^\/note\/(.+)$/);
+    const m = location.pathname.match(/^\/note\/topic\/[^/]+\/(.+)$/)
+           || location.pathname.match(/^\/note\/(?!topic\/)(.+)$/);
     return m ? m[1] : null;
   })();
 
@@ -143,37 +154,55 @@ export default function Sidebar() {
   const currentParentId = breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].id : undefined;
   const { nodes: currentNodes, loading: notesLoading } = useStructureLevel(currentParentId);
 
-  /* URL 中有 noteId 时，反查结构路径同步 breadcrumb */
+  /* URL → breadcrumb 同步
+   *   /note/:noteId       → 通过 contentItemId 反查路径
+   *   /note/topic/:topicId → 通过 nodeId 反查路径
+   *   /note                → 根级别，清空 breadcrumb */
   useEffect(() => {
-    if (!activeNoteId || active !== 'notes') return;
+    if (active !== 'notes') return;
     let cancelled = false;
 
-    structureApi.getPathByContentItemId(activeNoteId).then((path) => {
-      if (cancelled) return;
-      const folders = path
-        .filter((n) => n.type === 'FOLDER')
-        .map((n) => ({ id: n.id, name: n.name }));
-      setBreadcrumb(folders);
-    }).catch(() => {});
+    if (activeNoteId) {
+      structureApi.getPathByContentItemId(activeNoteId).then((path) => {
+        if (cancelled) return;
+        const folders = path
+          .filter((n) => n.type === 'FOLDER')
+          .map((n) => ({ id: n.id, name: n.name }));
+        setBreadcrumb(folders);
+      }).catch(() => {});
+    } else if (activeTopicId) {
+      structureApi.getPathByNodeId(activeTopicId).then((path) => {
+        if (cancelled) return;
+        const folders = path
+          .filter((n) => n.type === 'FOLDER')
+          .map((n) => ({ id: n.id, name: n.name }));
+        setBreadcrumb(folders);
+      }).catch(() => {});
+    }
 
     return () => { cancelled = true; };
-  }, [activeNoteId, active]);
+  }, [activeNoteId, activeTopicId, active]);
 
   const handleNavigate = (space: Space) => {
     navigate(spaceToPath(space));
     setBreadcrumb([]);
   };
 
-  /* 进入文件夹时，清除当前文章 URL，只展示目录 */
+  /* 进入文件夹：立即更新 breadcrumb + 同步 URL */
   const enterFolder = (node: StructureNode) => {
     setBreadcrumb((prev) => [...prev, { id: node.id, name: node.name }]);
-    if (activeNoteId) navigate('/note');
+    navigate(`/note/topic/${node.id}`);
   };
 
-  /* 面包屑点击回退时，同样清除文章 URL */
+  /* 面包屑回退：回到指定层级的文件夹，或回到根 */
   const goToBreadcrumb = (index: number | null) => {
-    setBreadcrumb(index === null ? [] : breadcrumb.slice(0, index + 1));
-    if (activeNoteId) navigate('/note');
+    if (index === null) {
+      setBreadcrumb([]);
+      navigate('/note');
+    } else {
+      setBreadcrumb(breadcrumb.slice(0, index + 1));
+      navigate(`/note/topic/${breadcrumb[index].id}`);
+    }
   };
 
   return (
@@ -183,7 +212,7 @@ export default function Sidebar() {
         width: 200,
         background: 'var(--sidebar-bg)',
         padding: '12px 8px',
-        margin: '8px 0 8px 8px',
+        margin: '12px 0 12px 12px',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-sm)',
       }}
@@ -252,30 +281,96 @@ export default function Sidebar() {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="mx-3 my-2.5 h-px" style={{ background: 'var(--separator)' }} />
 
-          {/* 面包屑导航 — 每个祖先都可点击 */}
-          <div className="flex flex-wrap items-center gap-0.5 px-3 pb-2 pt-1.5">
-            <span
-              className={`text-[12px] ${breadcrumb.length > 0 ? 'cursor-pointer hover-ink' : 'font-medium'} transition-colors duration-150`}
-              style={{ color: breadcrumb.length > 0 ? 'var(--ink-faded)' : 'var(--ink-ghost)', letterSpacing: '0.04em' }}
-              onClick={breadcrumb.length > 0 ? () => goToBreadcrumb(null) : undefined}
-            >
-              文稿
-            </span>
-            {breadcrumb.map((item, i) => (
-              <span key={item.id} className="flex items-center gap-0.5">
-                <span className="text-[10px]" style={{ color: 'var(--ink-ghost)' }}>/</span>
-                <span
-                  className={`truncate text-[12px] ${i < breadcrumb.length - 1 ? 'cursor-pointer hover-ink' : 'font-medium'} transition-colors duration-150`}
-                  style={{
-                    color: i < breadcrumb.length - 1 ? 'var(--ink-faded)' : 'var(--ink-light)',
-                    maxWidth: 100,
-                  }}
-                  onClick={i < breadcrumb.length - 1 ? () => goToBreadcrumb(i) : undefined}
-                >
-                  {item.name}
-                </span>
+          {/* 面包屑导航 — 单行返回路径模式
+           *  根层级：section 标题样式，无箭头
+           *  有层级：← 箭头回退一级 + 路径段可点击
+           *  超长时 hover … 弹出完整路径 */}
+          <div className="px-3 pb-2 pt-1.5">
+            {breadcrumb.length === 0 ? (
+              /* 根层级 — 纯标题，不可点击 */
+              <span
+                className="text-[12px] font-medium uppercase"
+                style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+              >
+                文稿
               </span>
-            ))}
+            ) : (
+              /* 有层级 — ← 回退一级 + 路径显示
+               * 1 级: ← 文稿
+               * 2+ 级: ← … / 直接父级（hover … 弹出完整路径可点击） */
+              <div className="flex items-center whitespace-nowrap">
+                <span
+                  className="shrink-0 cursor-pointer rounded p-0.5 transition-colors duration-150"
+                  style={{ color: 'var(--ink-faded)' }}
+                  onClick={() =>
+                    breadcrumb.length >= 2
+                      ? goToBreadcrumb(breadcrumb.length - 2)
+                      : goToBreadcrumb(null)
+                  }
+                >
+                  <ChevronLeft size={14} strokeWidth={2} />
+                </span>
+                <div className="flex min-w-0 items-center">
+                  {breadcrumb.length === 1 ? (
+                    /* 只有 1 级：显示 "文稿" 点击回根 */
+                    <span
+                      className="max-w-[120px] cursor-pointer truncate rounded px-1 py-0.5 text-[12px] transition-colors duration-150"
+                      style={{ color: 'var(--ink-light)' }}
+                      onClick={() => goToBreadcrumb(null)}
+                    >
+                      文稿
+                    </span>
+                  ) : (
+                    /* 2+ 级：… / 直接父级名
+                     * hover … 用 Radix HoverCard 弹出完整路径 */
+                    <>
+                      <HoverCard openDelay={200} closeDelay={100}>
+                        <HoverCardTrigger asChild>
+                          <span
+                            className="cursor-pointer rounded px-1 py-0.5 text-[12px] transition-colors duration-150"
+                            style={{ color: 'var(--ink-ghost)' }}
+                          >
+                            …
+                          </span>
+                        </HoverCardTrigger>
+                        <HoverCardContent align="start" sideOffset={4} className="min-w-[140px]">
+                          <div
+                            className="flex cursor-pointer items-center gap-2 truncate px-3 py-1.5 text-[12px] transition-colors duration-150"
+                            style={{ color: 'var(--ink-light)' }}
+                            onClick={() => goToBreadcrumb(null)}
+                          >
+                            <Folder size={14} strokeWidth={1.5} style={{ color: 'var(--ink-ghost)' }} />
+                            文稿
+                          </div>
+                          {breadcrumb.slice(0, -1).map((item, i) => (
+                            <div
+                              key={item.id}
+                              className="flex cursor-pointer items-center gap-2 truncate py-1.5 text-[12px] transition-colors duration-150"
+                              style={{
+                                color: 'var(--ink-light)',
+                                paddingLeft: `${(i + 1) * 10 + 12}px`,
+                                paddingRight: 12,
+                              }}
+                              onClick={() => goToBreadcrumb(i)}
+                            >
+                              <Folder size={14} strokeWidth={1.5} style={{ color: 'var(--ink-ghost)' }} />
+                              {item.name}
+                            </div>
+                          ))}
+                        </HoverCardContent>
+                      </HoverCard>
+                      <span className="text-[10px]" style={{ color: 'var(--ink-ghost)' }}>/</span>
+                      <span
+                        className="max-w-[100px] truncate text-[12px]"
+                        style={{ color: 'var(--ink-light)' }}
+                      >
+                        {breadcrumb[breadcrumb.length - 1].name}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {notesLoading ? (
@@ -307,7 +402,11 @@ export default function Sidebar() {
                     key={node.id}
                     className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
                     style={{ background: activeNoteId === node.contentItemId ? 'var(--shelf)' : undefined }}
-                    onClick={() => navigate(`/note/${node.contentItemId}`)}
+                    onClick={() => navigate(
+                      currentParentId
+                        ? `/note/topic/${currentParentId}/${node.contentItemId}`
+                        : `/note/${node.contentItemId}`,
+                    )}
                   >
                     <File size={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
                     <span

@@ -5,7 +5,7 @@
  *   - 笔记阅读器 (NotePage)：正文 + TOC 滚动定位
  *   - 管理端内容预览 (ContentVersionView)：版本正文预览
  *
- * 样式全部通过 CSS 自定义属性（--ink, --shelf, --font-mono 等）驱动，
+ * 样式全部通过 Tailwind utility class 驱动（映射到 @theme 注册的 CSS 变量），
  * 自动适配 daylight/midnight 双主题。
  *
  * 每个 h1/h2/h3 自动分配递增的 data-heading-id 属性，供外层
@@ -32,8 +32,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             <h1
               {...props}
               data-heading-id={hid}
-              className="mb-3 mt-8 font-bold leading-snug"
-              style={{ color: 'var(--ink)', letterSpacing: '-0.02em', fontSize: 'var(--text-3xl)' }}
+              className="mb-3 mt-8 font-bold leading-snug text-ink text-3xl tracking-[-0.02em]"
             >
               {children}
             </h1>
@@ -45,8 +44,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             <h2
               {...props}
               data-heading-id={hid}
-              className="mb-2.5 mt-7 font-semibold leading-snug"
-              style={{ color: 'var(--ink)', letterSpacing: '-0.015em', fontSize: 'var(--text-xl)' }}
+              className="mb-2.5 mt-7 font-semibold leading-snug text-ink text-xl tracking-[-0.015em]"
             >
               {children}
             </h2>
@@ -58,28 +56,26 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             <h3
               {...props}
               data-heading-id={hid}
-              className="mb-2 mt-6 font-semibold"
-              style={{ color: 'var(--ink)', fontSize: 'var(--text-md)' }}
+              className="mb-2 mt-6 font-semibold text-ink text-md"
             >
               {children}
             </h3>
           );
         },
         p: ({ children }) => (
+          /* hangingPunctuation 无对应 Tailwind class，保留 inline style */
           <p className="mb-5 text-justify" style={{ hangingPunctuation: 'allow-end' }}>{children}</p>
         ),
         blockquote: ({ children }) => (
           <blockquote
-            className="my-4 border-l-[3px] py-0.5 pl-5"
-            style={{ borderColor: 'var(--ink-ghost)', color: 'var(--ink-faded)' }}
+            className="my-4 border-l-[3px] py-0.5 pl-5 border-ink-ghost text-ink-faded"
           >
             {children}
           </blockquote>
         ),
         pre: ({ children }) => (
           <pre
-            className="my-4 overflow-x-auto whitespace-pre-wrap rounded-xl p-4"
-            style={{ background: 'var(--shelf)', fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: 1.7, color: 'var(--ink-light)' }}
+            className="my-4 overflow-x-auto whitespace-pre-wrap rounded-xl p-4 bg-shelf font-mono text-[13px] leading-[1.7] text-ink-light"
           >
             {children}
           </pre>
@@ -89,8 +85,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
           if (className) return <code className={className} {...props}>{children}</code>;
           return (
             <code
-              className="rounded-md px-1.5 py-[2px] text-[14px]"
-              style={{ background: 'var(--shelf)', fontFamily: 'var(--font-mono)', color: 'var(--ink-light)' }}
+              className="rounded-md px-1.5 py-[2px] bg-shelf font-mono text-[14px] text-ink-light"
               {...props}
             >
               {children}
@@ -100,26 +95,25 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
         ul: ({ children }) => <ul className="my-3 list-disc pl-7">{children}</ul>,
         ol: ({ children }) => <ol className="my-3 list-decimal pl-7">{children}</ol>,
         li: ({ children }) => <li className="py-0.5">{children}</li>,
-        hr: () => <hr className="my-8" style={{ borderColor: 'var(--separator)' }} />,
+        hr: () => <hr className="my-8 border-separator" />,
         a: ({ href, children }) => (
           <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="transition-colors duration-150"
-            style={{ color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+            className="transition-colors duration-150 text-ink underline underline-offset-[3px]"
           >
             {children}
           </a>
         ),
-        strong: ({ children }) => <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>{children}</strong>,
+        strong: ({ children }) => <strong className="text-ink font-semibold">{children}</strong>,
         table: ({ children }) => (
           <div className="my-4 overflow-x-auto">
-            <table className="w-full text-[14px]" style={{ borderCollapse: 'collapse' }}>{children}</table>
+            <table className="w-full border-collapse text-[14px]">{children}</table>
           </div>
         ),
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-[14px] font-semibold" style={{ borderBottom: '1px solid var(--separator)', color: 'var(--ink-faded)' }}>
+          <th className="px-3 py-2 text-left font-semibold border-b border-separator text-ink-faded text-[14px]">
             {children}
           </th>
         ),

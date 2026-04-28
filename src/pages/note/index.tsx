@@ -33,8 +33,8 @@ import { BookOpen, X, Sparkles } from 'lucide-react';
  * ================================================================ */
 
 export default function NotePage() {
-  const { id } = useParams<{ id: string }>();
-  return id ? <NoteReader id={id} /> : <NoteListView />;
+  const { noteId } = useParams<{ noteId?: string; topicId?: string }>();
+  return noteId ? <NoteReader id={noteId} /> : <NoteListView />;
 }
 
 /* ---------- Empty State ---------- */
