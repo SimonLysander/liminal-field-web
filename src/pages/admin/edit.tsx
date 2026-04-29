@@ -1,22 +1,14 @@
 /*
- * DraftEditPage — Standalone draft editor (/admin/edit/:id)
+ * DraftEditPage — 沉浸式草稿编辑器 (/admin/edit/:id)
  *
- * Layout: the editor card uses radius-lg (10px) + shadow-sm + inset-light,
- * floating on a paper-dark background. This inverts the normal pattern —
- * the editor itself is the card, emphasizing focus on the writing surface.
+ * 布局：全屏沉浸式，无卡片浮起效果。顶栏单行：
+ *   ← / 标题 | 工具栏(Portal) | 状态 + 操作按钮
  *
- * Content area: max-w-[740px] px-10, matching the note reader's reading
- * width for WYSIWYG consistency between editing and published views.
+ * 内容区域：max-w-[740px] px-10，与阅读页宽度一致（所见即所得）。
  *
- * Right outline panel: 200px wide (same as Sidebar / TreePanel), shows
- * live heading outline extracted from markdown. Headings are found via
- * querySelectorAll on Slate's rendered h1/h2/h3 elements, then scrolled
- * to using getBoundingClientRect() relative to the scroll container.
+ * 右侧大纲面板：200px，从 markdown 提取标题层级，点击滚动到对应位置。
  *
- * Autosave: 1.5s debounce after any change; ⌘S opens commit dialog,
- * ⇧⌘S saves draft immediately.
- *
- * All font sizes use CSS type scale variables for design system consistency.
+ * 自动保存：1.5s debounce；⌘S 打开提交对话框，⇧⌘S 直接保存草稿。
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -59,6 +51,8 @@ const DraftEditPage = () => {
   const [actionMessage, setActionMessage] = useState('');
   const [resetKey] = useState(0);
   const [showCommitDialog, setShowCommitDialog] = useState(false);
+  /* Portal 目标：Plate 工具栏通过 Portal 渲染到此元素内 */
+  const [toolbarPortal, setToolbarPortal] = useState<HTMLDivElement | null>(null);
 
   /* Parse headings from markdown for outline — skips code blocks */
   const headings = useMemo<HeadingEntry[]>(() => {
@@ -266,41 +260,34 @@ const DraftEditPage = () => {
   }
 
   return (
-    <div className="flex h-screen" style={{ background: 'var(--paper-dark)' }}>
-      <main
-        className="relative z-0 flex flex-1 flex-col overflow-hidden"
-        style={{
-          background: 'var(--paper)',
-          margin: 8,
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-sm), var(--inset-light)',
-        }}
-      >
-        {/* Top bar — back + title + status + actions */}
+    <div className="flex h-screen" style={{ background: 'var(--paper)' }}>
+      <main className="relative z-0 flex flex-1 flex-col overflow-hidden">
+        {/* 顶栏：返回 + 标题 + 工具栏 + 状态 + 操作，一行 */}
         <header
-          className="flex shrink-0 items-center justify-between px-5"
+          className="flex shrink-0 items-center gap-3 px-4"
           style={{ height: 48, borderBottom: '0.5px solid var(--separator)' }}
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <button
-              className="hover-shelf shrink-0 rounded-md px-2 py-1 transition-colors duration-150"
-              style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-base)' }}
-              onClick={() => navigate('/admin')}
-            >
-              ←
-            </button>
-            <span className="shrink-0" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>/</span>
-            <input
-              type="text"
-              value={state.title}
-              onChange={(e) => handleChange('title', e.target.value)}
-              placeholder="无标题"
-              className="min-w-0 flex-1 truncate border-none bg-transparent font-medium outline-none placeholder:text-[var(--ink-ghost)]"
-              style={{ color: 'var(--ink)', fontSize: 'var(--text-base)' }}
-            />
-          </div>
+          <button
+            className="hover-shelf shrink-0 rounded-md px-2 py-1 transition-colors duration-150"
+            style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-base)' }}
+            onClick={() => navigate('/admin')}
+          >
+            ←
+          </button>
+          <span className="shrink-0" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>/</span>
+          <input
+            type="text"
+            value={state.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            placeholder="无标题"
+            className="w-[160px] shrink-0 truncate border-none bg-transparent font-medium outline-none placeholder:text-[var(--ink-ghost)]"
+            style={{ color: 'var(--ink)', fontSize: 'var(--text-base)' }}
+          />
 
-          <div className="flex shrink-0 items-center gap-5">
+          {/* 工具栏占据中间空间（Portal 注入） */}
+          <div ref={setToolbarPortal} className="min-w-0 flex-1 overflow-x-auto" />
+
+          <div className="flex shrink-0 items-center gap-4">
             <div className="flex items-center gap-2" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>
               {isAutosaving && <StatusDot color="var(--mark-blue)" />}
               {isDirty && !isAutosaving && <StatusDot color="var(--mark-red)" />}
@@ -333,6 +320,7 @@ const DraftEditPage = () => {
                 key={resetKey}
                 initialMarkdown={state.bodyMarkdown}
                 onChange={(md) => handleChange('bodyMarkdown', md)}
+                toolbarContainer={toolbarPortal}
               />
             </div>
           </div>

@@ -6,7 +6,11 @@
  * centralized while letting components use Tailwind for layout and spacing.
  */
 
+@plugin "tailwind-scrollbar-hide";
+
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
 
 /*
  * Tailwind @theme — 将设计系统 CSS 变量桥接为 Tailwind utility class。
@@ -46,11 +50,42 @@
   --color-ink-faded: var(--ink-faded);
   --color-ink-ghost: var(--ink-ghost);
 
-  /* ── 颜色：强调色 ── */
-  --color-accent: var(--accent);
+  /* ── 颜色：强调色（设计系统原始 token）── */
   --color-accent-soft: var(--accent-soft);
   --color-accent-border: var(--accent-border);
   --color-accent-contrast: var(--accent-contrast);
+
+  /*
+   * ── shadcn / Plate UI 兼容层 ──
+   *
+   * Plate UI kit 组件使用 shadcn 的标准 Tailwind class（bg-popover, text-foreground,
+   * border-border 等）。这些 class 解析为 --color-* 变量，必须在 @theme 中定义。
+   *
+   * 注意：shadcn 的 "accent" 指 hover/selected 背景色（浅灰），与我们设计系统的
+   * --accent（主色 #1D1D1F）含义不同。我们的代码全部通过 var(--accent) inline style
+   * 引用设计系统主色，不经过 Tailwind class，所以不会冲突。
+   */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--paper);
+  --color-secondary: var(--paper-dark);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--paper-dark);
+  --color-muted-foreground: var(--ink-faded);
+  --color-accent: var(--paper-dark);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--mark-red);
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: var(--separator);
+  --color-input: var(--separator);
+  --color-ring: var(--ink);
+  --color-brand: var(--ink);
+  --color-highlight: var(--highlight);
 
   /* ── 颜色：语义标记色 ── */
   --color-mark-red: var(--mark-red);
@@ -142,6 +177,31 @@
   --sidebar-bg: #F2F2F2;
   --bar-bg: rgba(255,255,255,0.8);
   --inset-light: inset 0 1px 0 rgba(255,255,255,0.5);
+
+  /*
+   * shadcn compat — 在 [data-theme] 上重复定义，确保 Radix Portal
+   * 等挂载在 <body> 末尾的元素正确继承颜色（@theme 定义在 :root 层级，
+   * 对 Portal 元素的 var() 链可能断裂）
+   */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--paper);
+  --color-secondary: var(--paper-dark);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--paper-dark);
+  --color-muted-foreground: var(--ink-faded);
+  --color-accent: var(--paper-dark);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--mark-red);
+  --color-border: var(--separator);
+  --color-input: var(--separator);
+  --color-ring: var(--ink);
+  --color-brand: var(--ink);
 }
 
 /* Midnight — dark theme with white accent */
@@ -185,6 +245,27 @@
   --sidebar-bg: #1C1C1E;
   --bar-bg: rgba(28,28,30,0.82);
   --inset-light: inset 0 1px 0 rgba(255,255,255,0.06);
+
+  /* shadcn compat — Portal 元素继承保障（同 daylight） */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--paper);
+  --color-secondary: var(--paper-dark);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--paper-dark);
+  --color-muted-foreground: var(--ink-faded);
+  --color-accent: var(--paper-dark);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--mark-red);
+  --color-border: var(--separator);
+  --color-input: var(--separator);
+  --color-ring: var(--ink);
+  --color-brand: var(--ink);
 }
 
 /* ========== Global Resets & Typography ========== */
@@ -233,6 +314,9 @@
   --text-3xl: 1.25rem;    /* ~20px */
   --text-4xl: 1.375rem;   /* ~22px */
   --text-5xl: 1.75rem;    /* ~28px */
+
+  /* shadcn highlight 标记色 */
+  --highlight: oklch(0.852 0.199 91.936);
 }
 
 /* Responsive base font size — bump from 16→17 for overall readability */
@@ -441,4 +525,9 @@ body.theme-transitioning *::after {
 }
 [data-theme="midnight"] .ai-chat-input-row input {
   background: rgba(255,255,255,0.06);
+}
+
+/* midnight 主题 highlight 色覆盖 */
+[data-theme="midnight"] {
+  --highlight: oklch(0.852 0.199 91.936);
 }
