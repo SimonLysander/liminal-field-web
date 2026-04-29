@@ -9,7 +9,7 @@
  *   - 编辑时 serializeMd 将节点树序列化回 Markdown
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plate,
@@ -19,7 +19,6 @@ import { serializeMd, deserializeMd } from '@platejs/markdown';
 
 import { EditorKit } from '@/components/editor/editor-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
-import { FakeCaret } from '@/components/ui/fake-caret';
 import { FixedToolbar } from '@/components/ui/fixed-toolbar';
 import { FixedToolbarButtons } from '@/components/ui/fixed-toolbar-buttons';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -59,8 +58,6 @@ export function PlateMarkdownEditor({
     }
   }, [editor, onChange]);
 
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-
   if (!editor) return null;
 
   return (
@@ -72,12 +69,9 @@ export function PlateMarkdownEditor({
           </FixedToolbar>,
           toolbarContainer,
         )}
-        <div ref={editorContainerRef} className="relative">
-          <EditorContainer>
-            <Editor variant="default" placeholder="开始写作..." />
-          </EditorContainer>
-          <FakeCaret containerRef={editorContainerRef} />
-        </div>
+        <EditorContainer>
+          <Editor variant="default" placeholder="开始写作..." />
+        </EditorContainer>
       </Plate>
     </TooltipProvider>
   );

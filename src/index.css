@@ -268,20 +268,10 @@
   --color-brand: var(--ink);
 }
 
-/* ========== Editor Caret — 隐藏原生光标，使用 FakeCaret 组件 ========== */
+/* ========== Editor Caret ========== */
 
 [data-slate-editor] {
-  caret-color: transparent;
-}
-
-.fake-caret {
-  animation: caret-breathe 1s ease-in-out infinite;
-}
-
-@keyframes caret-breathe {
-  0%   { opacity: 1; }
-  50%  { opacity: 0; }
-  100% { opacity: 1; }
+  caret-color: var(--ink);
 }
 
 /* ========== Global Resets & Typography ========== */
