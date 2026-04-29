@@ -5,9 +5,6 @@ import * as React from 'react';
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
 
 import {
-  CalendarIcon,
-  Code2,
-  Columns3Icon,
   FileCodeIcon,
   FilmIcon,
   Heading1Icon,
@@ -18,15 +15,11 @@ import {
   ListIcon,
   ListOrderedIcon,
   MinusIcon,
-  PenToolIcon,
   PilcrowIcon,
   PlusIcon,
   QuoteIcon,
-  RadicalIcon,
   SquareIcon,
-  SuperscriptIcon,
   TableIcon,
-  TableOfContentsIcon,
 } from 'lucide-react';
 import { KEYS } from 'platejs';
 import { type PlateEditor, useEditorRef } from 'platejs/react';
@@ -154,66 +147,12 @@ const groups: Group[] = [
     })),
   },
   {
-    group: 'Advanced blocks',
-    items: [
-      {
-        icon: <TableOfContentsIcon />,
-        label: 'Table of contents',
-        value: KEYS.toc,
-      },
-      {
-        icon: <Columns3Icon />,
-        label: '3 columns',
-        value: 'action_three_columns',
-      },
-      {
-        focusEditor: false,
-        icon: <RadicalIcon />,
-        label: 'Equation',
-        value: KEYS.equation,
-      },
-      {
-        icon: <PenToolIcon />,
-        label: 'Excalidraw',
-        value: KEYS.excalidraw,
-      },
-      {
-        icon: <Code2 />,
-        label: 'Code Drawing',
-        value: KEYS.codeDrawing,
-      },
-    ].map((item) => ({
-      ...item,
-      onSelect: (editor, value) => {
-        insertBlock(editor, value);
-      },
-    })),
-  },
-  {
     group: 'Inline',
     items: [
       {
         icon: <Link2Icon />,
         label: 'Link',
         value: KEYS.link,
-      },
-      {
-        focusEditor: true,
-        icon: <CalendarIcon />,
-        label: 'Date',
-        value: KEYS.date,
-      },
-      {
-        focusEditor: true,
-        icon: <SuperscriptIcon />,
-        label: 'Footnote',
-        value: 'action_footnote',
-      },
-      {
-        focusEditor: false,
-        icon: <RadicalIcon />,
-        label: 'Inline Equation',
-        value: KEYS.inlineEquation,
       },
     ].map((item) => ({
       ...item,
