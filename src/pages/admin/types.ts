@@ -51,14 +51,8 @@ export type DraftPresence = {
   savedAt?: string;
 };
 
-export type DocCreateState = {
-  title: string;
-  summary: string;
-};
-
 export type NodeSubmitPayload = {
   node: CreateStructureNodeDto | UpdateStructureNodeDto;
-  docCreate?: DocCreateState;
 };
 
 export type PreviewState = {
@@ -133,10 +127,6 @@ export const EMPTY_DRAFT_PRESENCE: DraftPresence = {
   exists: false,
 };
 
-export const EMPTY_DOC_CREATE_STATE: DocCreateState = {
-  title: '',
-  summary: '',
-};
 
 export function toFormalContentState(detail: ContentDetail): FormalContentState {
   return {

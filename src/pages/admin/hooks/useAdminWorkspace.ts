@@ -8,7 +8,6 @@ import type {
 import { structureApi } from '@/services/structure';
 import {
   countNodes,
-  findNodeInTree,
   getSiblings,
   insertChildInTree,
   moveNodeInTree,
@@ -247,18 +246,14 @@ export function useAdminWorkspace() {
     const createPayload = payload.node as CreateStructureNodeDto;
     let contentItemId = createPayload.contentItemId;
 
+    /* DOC 节点自动创建内容项，用节点名称作为标题 */
     if (createPayload.type === 'DOC') {
-      const docCreate = payload.docCreate;
-      if (!docCreate) {
-        throw new Error('DOC 节点必须关联内容项');
-      }
-
       const createdContent = await contentItemsApi.create({
-        title: docCreate.title,
-        summary: docCreate.summary,
+        title: createPayload.name,
+        summary: '',
         status: 'committed',
         bodyMarkdown: '',
-        changeNote: '初始内容',
+        changeNote: '初始创建',
         changeType: 'major',
       });
       contentItemId = createdContent.id;
@@ -610,42 +605,35 @@ export function useAdminWorkspace() {
 
   const handleMoveNode = useCallback(
     (nodeId: string, targetNodeId: string, position: 'before' | 'after' | 'inside') => {
-      /* Optimistic update: move in local tree immediately */
-      setTree((current) => {
-        const updated = moveNodeInTree(current, nodeId, targetNodeId, position);
+      /* 计算移动前的 parentId */
+      const [, oldParentId] = getSiblings(tree, nodeId);
 
-        /* Determine new parentId and sibling order for API call */
-        let newParentId: string | null = null;
-        if (position === 'inside') {
-          newParentId = targetNodeId;
-        } else {
-          const [siblings] = getSiblings(updated, nodeId);
-          const targetNode = findNodeInTree(updated, targetNodeId);
-          if (targetNode) {
-            /* Find parent by checking which list contains targetNodeId in the updated tree */
-            const [, parentId] = getSiblings(updated, targetNodeId);
-            newParentId = parentId;
-          }
-          /* Collect sibling IDs in order for batch reorder */
-          const siblingIds = siblings.map((s) => s.id);
-          void structureApi.reorderSiblings(newParentId, siblingIds).catch(() => {
-            /* Revert on failure by reloading */
-            void loadRoots();
+      /* 乐观更新：立即在本地树中移动节点 */
+      const updated = moveNodeInTree(tree, nodeId, targetNodeId, position);
+      setTree(updated);
+
+      /* 确定目标 parentId 和新的兄弟节点顺序 */
+      const newParentId = position === 'inside'
+        ? targetNodeId
+        : getSiblings(updated, targetNodeId)[1];
+      const [newSiblings] = getSiblings(updated, nodeId);
+      const siblingIds = newSiblings.map((s) => s.id);
+
+      /* 异步持久化：跨父级移动时需先更新 parentId，再重排序 */
+      const persist = async () => {
+        if (oldParentId !== newParentId) {
+          await structureApi.updateNode(nodeId, {
+            parentId: newParentId ?? undefined,
           });
-          return updated;
         }
+        await structureApi.reorderSiblings(newParentId, siblingIds);
+      };
 
-        /* For 'inside' moves, update parentId via single-node update */
-        void structureApi
-          .updateNode(nodeId, { parentId: newParentId ?? undefined })
-          .catch(() => {
-            void loadRoots();
-          });
-
-        return updated;
+      void persist().catch(() => {
+        void loadRoots();
       });
     },
-    [loadRoots],
+    [tree, loadRoots],
   );
 
   const insertAssetPath = useCallback((path: string) => {

@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
+import { Folder, FileText } from 'lucide-react';
 import { smoothBounce } from '@/lib/motion';
 import type { StructureNodeType } from '@/services/structure';
 import { parseError } from '../helpers';
-import { EMPTY_DOC_CREATE_STATE, type ModalState, type NodeSubmitPayload } from '../types';
+import { type ModalState, type NodeSubmitPayload } from '../types';
 
 /**
  * Modal dialog for creating or editing tree nodes.
  *
- * Uses a backdrop-blur overlay and a spring-animated card to match the
- * Apple-style treatment used elsewhere in the admin workspace.
- *
- * Radius: modal container uses radius-xl (12px, modal/overlay tier).
- * Inputs use rounded-lg (Tailwind, maps to radius-lg = 10px via @theme).
- * All font sizes use type scale variables (--text-2xs, --text-sm, --text-lg).
+ * Create mode: user picks "主题"(FOLDER) or "文稿"(DOC), enters a name.
+ * DOC creation uses node name as content title — no separate title/summary fields.
+ * Edit mode: simple rename dialog.
  */
 export const NodeFormModal = ({
   modal,
@@ -26,28 +24,16 @@ export const NodeFormModal = ({
 }) => {
   const [name, setName] = useState(modal.node?.name ?? '');
   const [type, setType] = useState<StructureNodeType>(modal.node?.type ?? 'FOLDER');
-  const [docCreate, setDocCreate] = useState(EMPTY_DOC_CREATE_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const isCreate = modal.mode === 'create';
-  const needsDocFields = isCreate && type === 'DOC';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!name.trim()) {
-      setError('请输入节点名称');
-      return;
-    }
-
-    if (needsDocFields && !docCreate.title.trim()) {
-      setError('请输入内容标题');
-      return;
-    }
-
-    if (needsDocFields && !docCreate.summary.trim()) {
-      setError('请输入内容摘要');
+      setError('请输入名称');
       return;
     }
 
@@ -62,12 +48,6 @@ export const NodeFormModal = ({
             type,
             parentId: modal.parentId,
           },
-          docCreate: needsDocFields
-            ? {
-                title: docCreate.title.trim(),
-                summary: docCreate.summary.trim(),
-              }
-            : undefined,
         });
       } else {
         await onSubmit({
@@ -83,6 +63,11 @@ export const NodeFormModal = ({
       setSubmitting(false);
     }
   };
+
+  const typeOptions: { value: StructureNodeType; label: string; icon: React.ReactNode }[] = [
+    { value: 'FOLDER', label: '主题', icon: <Folder size={15} strokeWidth={1.5} /> },
+    { value: 'DOC', label: '文稿', icon: <FileText size={15} strokeWidth={1.5} /> },
+  ];
 
   return (
     <div
@@ -102,74 +87,45 @@ export const NodeFormModal = ({
         transition={{ duration: 0.2, ease: smoothBounce }}
       >
         <div className="px-6 pb-1 pt-5">
-          <div className="font-semibold uppercase" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.04em' }}>
-            {isCreate ? '创建节点' : '编辑节点'}
-          </div>
-          <h2 className="mt-1 font-semibold" style={{ color: 'var(--ink)', fontSize: 'var(--text-lg)', letterSpacing: '-0.01em' }}>
-            {isCreate ? '新建结构节点' : '更新元数据'}
+          <h2 className="font-semibold" style={{ color: 'var(--ink)', fontSize: 'var(--text-lg)', letterSpacing: '-0.01em' }}>
+            {isCreate ? '新建' : '重命名'}
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6 pt-3">
-          <FieldLabel label="节点名称">
+          <FieldLabel label="名称">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border-none px-3 py-2 outline-none"
               style={{ background: 'var(--shelf)', color: 'var(--ink)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-sans)' }}
-              placeholder="例如：世界观构建"
+              placeholder={isCreate && type === 'DOC' ? '例如：世界观构建笔记' : '例如：世界观构建'}
               autoFocus
             />
           </FieldLabel>
 
           {isCreate && (
-            <FieldLabel label="节点类型">
+            <FieldLabel label="类型">
               <div className="flex gap-1.5">
-                {(['FOLDER', 'DOC'] as StructureNodeType[]).map((candidate) => (
+                {typeOptions.map((option) => (
                   <button
-                    key={candidate}
+                    key={option.value}
                     type="button"
-                    onClick={() => setType(candidate)}
-                    className="flex-1 rounded-lg py-2 font-medium transition-colors duration-150"
+                    onClick={() => setType(option.value)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 font-medium transition-colors duration-150"
                     style={{
                       fontSize: 'var(--text-sm)',
-                      background: type === candidate ? 'var(--accent)' : 'var(--shelf)',
-                      color: type === candidate ? 'var(--accent-contrast)' : 'var(--ink-faded)',
+                      background: type === option.value ? 'var(--accent)' : 'var(--shelf)',
+                      color: type === option.value ? 'var(--accent-contrast)' : 'var(--ink-faded)',
                     }}
                   >
-                    {candidate}
+                    {option.icon}
+                    {option.label}
                   </button>
                 ))}
               </div>
             </FieldLabel>
-          )}
-
-          {needsDocFields && (
-            <div className="space-y-3 rounded-xl p-4" style={{ background: 'var(--shelf)' }}>
-              <div className="font-semibold uppercase" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.04em' }}>
-                初始内容
-              </div>
-              <FieldLabel label="标题">
-                <input
-                  type="text"
-                  value={docCreate.title}
-                  onChange={(e) => setDocCreate((c) => ({ ...c, title: e.target.value }))}
-                  className="w-full rounded-lg border-none px-3 py-2 outline-none"
-                  style={{ background: 'var(--paper)', color: 'var(--ink)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-sans)' }}
-                  placeholder="初始正式版本标题"
-                />
-              </FieldLabel>
-              <FieldLabel label="摘要">
-                <textarea
-                  value={docCreate.summary}
-                  onChange={(e) => setDocCreate((c) => ({ ...c, summary: e.target.value }))}
-                  className="min-h-[60px] w-full resize-y rounded-lg border-none px-3 py-2 outline-none"
-                  style={{ background: 'var(--paper)', color: 'var(--ink)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-sans)' }}
-                  placeholder="DOC 节点创建时会自动绑定内容项"
-                />
-              </FieldLabel>
-            </div>
           )}
 
           {error && (
