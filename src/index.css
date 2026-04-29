@@ -275,7 +275,7 @@
 }
 
 .fake-caret {
-  animation: caret-breathe 2s ease-in-out infinite;
+  animation: caret-breathe 1.5s ease-in-out infinite;
 }
 
 @keyframes caret-breathe {

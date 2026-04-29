@@ -50,8 +50,9 @@ export function FakeCaret({ containerRef }: { containerRef: React.RefObject<HTML
 
       const containerRect = container.getBoundingClientRect();
       caret.style.left = `${rect.left - containerRect.left + container.scrollLeft}px`;
-      caret.style.top = `${rect.top - containerRect.top + container.scrollTop}px`;
-      caret.style.height = `${rect.height}px`;
+      const extraHeight = 4;
+      caret.style.top = `${rect.top - containerRect.top + container.scrollTop - extraHeight / 2}px`;
+      caret.style.height = `${rect.height + extraHeight}px`;
       setVisible(true);
     };
 
