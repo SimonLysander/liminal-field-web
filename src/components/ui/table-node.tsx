@@ -905,7 +905,7 @@ function TableFloatingToolbarContent({
       {...props}
     >
       <Toolbar
-        className="scrollbar-hide flex w-auto max-w-[80vw] flex-row overflow-x-auto rounded-md border bg-popover p-1 shadow-md print:hidden"
+        className="scrollbar-hide flex w-auto max-w-[80vw] flex-row overflow-x-auto rounded-xl border border-box-border bg-popover p-1 shadow-lg print:hidden"
         contentEditable={false}
       >
         <ToolbarGroup>

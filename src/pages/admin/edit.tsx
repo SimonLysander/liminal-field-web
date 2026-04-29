@@ -81,7 +81,7 @@ const DraftEditPage = () => {
     );
     const el = els[index] as HTMLElement | undefined;
     if (!el) return;
-    const container = el.closest('.overflow-y-auto') as HTMLElement | null;
+    const container = document.querySelector('[data-scroll-container]') as HTMLElement | null;
     if (container) {
       const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 64;
       container.scrollTo({ top, behavior: 'smooth' });
@@ -314,7 +314,7 @@ const DraftEditPage = () => {
 
         {/* Body — editor + right outline */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden" data-scroll-container>
             <div className="mx-auto max-w-[740px] px-10 pb-40 pt-10">
               <PlateMarkdownEditor
                 key={resetKey}
