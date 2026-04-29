@@ -6,6 +6,7 @@ import {
   BaselineIcon,
   BoldIcon,
   Code2Icon,
+  FileCodeIcon,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -25,9 +26,7 @@ import {
 } from '@/components/editor/transforms';
 
 import { FontColorToolbarButton } from './font-color-toolbar-button';
-import { FontSizeToolbarButton } from './font-size-toolbar-button';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
-import { InsertToolbarButton } from './insert-toolbar-button';
 import { LinkToolbarButton } from './link-toolbar-button';
 import {
   BulletedListToolbarButton,
@@ -57,12 +56,6 @@ export function FixedToolbarButtons() {
             <RedoToolbarButton />
           </ToolbarGroup>
 
-          <ToolbarGroup>
-            <InsertToolbarButton />
-            <FontSizeToolbarButton />
-          </ToolbarGroup>
-
-          {/* H1/H2/H3/Text 直接按钮，替代下拉菜单 */}
           <ToolbarGroup>
             <ToolbarButton
               pressed={blockType === KEYS.p}
@@ -102,6 +95,14 @@ export function FixedToolbarButtons() {
               tooltip="引用"
             >
               <QuoteIcon />
+            </ToolbarButton>
+
+            <ToolbarButton
+              pressed={blockType === KEYS.codeBlock}
+              onClick={() => setBlockType(editor, KEYS.codeBlock)}
+              tooltip="代码块"
+            >
+              <FileCodeIcon />
             </ToolbarButton>
           </ToolbarGroup>
 
