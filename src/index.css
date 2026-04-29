@@ -10,7 +10,7 @@
 
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="midnight"] *));
 
 /*
  * Tailwind @theme — 将设计系统 CSS 变量桥接为 Tailwind utility class。
