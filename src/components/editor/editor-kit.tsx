@@ -7,7 +7,7 @@
 
 'use client';
 
-import { ExitBreakPlugin, TrailingBlockPlugin } from 'platejs/react';
+import { ExitBreakPlugin, TrailingBlockPlugin } from 'platejs';
 
 import { BasicNodesKit } from './plugins/basic-nodes-kit';
 import { CodeBlockKit } from './plugins/code-block-kit';
