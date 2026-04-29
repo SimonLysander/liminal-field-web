@@ -275,12 +275,13 @@
 }
 
 .fake-caret {
-  animation: caret-breathe 1.5s ease-in-out infinite;
+  animation: caret-breathe 1s ease-in-out infinite;
 }
 
 @keyframes caret-breathe {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.25; }
+  0%   { opacity: 1; }
+  50%  { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 /* ========== Global Resets & Typography ========== */
