@@ -5,6 +5,7 @@ import type { TElement } from 'platejs';
 import {
   BaselineIcon,
   BoldIcon,
+  CalendarIcon,
   Code2Icon,
   FileCodeIcon,
   Heading1Icon,
@@ -22,6 +23,7 @@ import { useEditorRef, useEditorReadOnly, useSelectionFragmentProp } from 'plate
 
 import {
   getBlockType,
+  insertInlineElement,
   setBlockType,
 } from '@/components/editor/transforms';
 
@@ -153,6 +155,12 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <LinkToolbarButton />
+            <ToolbarButton
+              onClick={() => insertInlineElement(editor, KEYS.date)}
+              tooltip="插入日期"
+            >
+              <CalendarIcon />
+            </ToolbarButton>
           </ToolbarGroup>
 
           <ToolbarGroup>

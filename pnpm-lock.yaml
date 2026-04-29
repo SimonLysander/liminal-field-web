@@ -188,6 +188,12 @@ importers:
       react-day-picker:
         specifier: ^9.14.0
         version: 9.14.0(react@19.2.3)
+      react-dnd:
+        specifier: ^16.0.1
+        version: 16.0.1(@types/node@24.10.9)(@types/react@19.2.8)(react@19.2.3)
+      react-dnd-html5-backend:
+        specifier: ^16.0.1
+        version: 16.0.1
       react-dom:
         specifier: ^19.2.0
         version: 19.2.3(react@19.2.3)

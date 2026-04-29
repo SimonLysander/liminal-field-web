@@ -3,6 +3,7 @@
 import type { PlateEditor } from 'platejs/react';
 
 import { insertCodeBlock, toggleCodeBlock } from '@platejs/code-block';
+import { insertDate } from '@platejs/date';
 import { triggerFloatingLink } from '@platejs/link/react';
 import {
   insertAudioPlaceholder,
@@ -71,6 +72,7 @@ const insertInlineMap: Record<
   string,
   (editor: PlateEditor, type: string) => void
 > = {
+  [KEYS.date]: (editor) => insertDate(editor, { select: true }),
   [KEYS.link]: (editor) => triggerFloatingLink(editor, { focused: true }),
 };
 
