@@ -207,7 +207,9 @@ const DraftEditPage = () => {
       setShowCommitDialog(false);
       setActionMessage('已提交正式版本');
 
-      setTimeout(() => navigate('/admin'), 1200);
+      setTimeout(() => navigate('/admin/content', {
+        state: { selectContentItemId: id },
+      }), 1200);
     } catch (commitError) {
       setError(parseError(commitError, '提交失败'));
     }

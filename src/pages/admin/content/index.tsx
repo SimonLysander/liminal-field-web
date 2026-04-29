@@ -6,8 +6,9 @@
  * AdminShell 提供外层容器（h-screen + Topbar），本组件只负责内容区域。
  */
 
+import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { smoothBounce } from '@/lib/motion';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import Topbar from '@/components/global/Topbar';
@@ -17,12 +18,38 @@ import { FolderDetailPanel } from '../components/FolderDetailPanel';
 import { NodeFormModal } from '../components/NodeFormModal';
 import { TreePanel } from '../components/TreePanel';
 import { useAdminWorkspace } from '../hooks/useAdminWorkspace';
+import { findNodeInTree } from '../helpers';
 import type { DraftPresence } from '../types';
 import type { ContentHistoryEntry, ListedAsset } from '@/services/workspace';
 
 const ContentAdmin = () => {
   const workspace = useAdminWorkspace();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /* 从编辑页提交后跳回时，自动选中对应的节点 */
+  useEffect(() => {
+    const state = location.state as { selectContentItemId?: string } | null;
+    if (!state?.selectContentItemId || workspace.loading || workspace.tree.length === 0) return;
+
+    const findByContentItemId = (nodes: typeof workspace.tree): typeof workspace.tree[0] | null => {
+      for (const node of nodes) {
+        if (node.contentItemId === state.selectContentItemId) return node;
+        if (node.children) {
+          const found = findByContentItemId(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const node = findByContentItemId(workspace.tree);
+    if (node) {
+      workspace.setSelectedNode(node);
+      /* 清掉 state 防止重复触发 */
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [workspace.loading, workspace.tree, location.state]);
 
   const editUrl = workspace.selectedNode?.contentItemId
     ? `/admin/edit/${workspace.selectedNode.contentItemId}`

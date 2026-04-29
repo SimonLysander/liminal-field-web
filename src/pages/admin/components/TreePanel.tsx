@@ -310,17 +310,21 @@ export const TreePanel = ({
       e.preventDefault();
       e.stopPropagation();
 
+      console.log('[DnD] drop:', { draggedNodeId, dropTarget });
+
       if (!draggedNodeId || !dropTarget) {
+        console.log('[DnD] 取消：无拖拽节点或无目标');
         handleDragEnd();
         return;
       }
 
-      /* Prevent dropping a node onto itself or its own children */
       if (isDescendant(tree, draggedNodeId, dropTarget.nodeId)) {
+        console.log('[DnD] 取消：不能拖入自身子节点');
         handleDragEnd();
         return;
       }
 
+      console.log('[DnD] 执行移动:', draggedNodeId, '→', dropTarget.nodeId, dropTarget.position);
       onMoveNode(draggedNodeId, dropTarget.nodeId, dropTarget.position);
       handleDragEnd();
     },

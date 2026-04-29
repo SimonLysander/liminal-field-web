@@ -308,20 +308,20 @@
   --radius-lg: 10px;
   --radius-xl: 12px;
 
-  /* Type scale — 与 design-system.md 一致，base = 16px */
+  /* Type scale — 整体紧凑，base = 16px */
   --text-4xs: 0.5rem;     /* 8px */
-  --text-3xs: 0.625rem;   /* 10px */
-  --text-2xs: 0.6875rem;  /* 11px */
-  --text-xs: 0.75rem;     /* 12px */
-  --text-sm: 0.8125rem;   /* 13px */
-  --text-base: 0.875rem;  /* 14px */
-  --text-md: 0.9375rem;   /* 15px */
-  --text-lg: 1rem;        /* 16px — 编辑器正文、阅读正文 */
-  --text-xl: 1.125rem;    /* 18px — h3 */
-  --text-2xl: 1.25rem;    /* 20px — h2 */
-  --text-3xl: 1.375rem;   /* 22px — h1 */
-  --text-4xl: 1.5rem;     /* 24px — 页面标题 */
-  --text-5xl: 1.75rem;    /* 28px — 大标题 */
+  --text-3xs: 0.5625rem;  /* 9px */
+  --text-2xs: 0.625rem;   /* 10px */
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.75rem;     /* 12px */
+  --text-base: 0.8125rem; /* 13px */
+  --text-md: 0.875rem;    /* 14px */
+  --text-lg: 0.9375rem;   /* 15px — 编辑器正文、阅读正文 */
+  --text-xl: 1rem;        /* 16px — h3 */
+  --text-2xl: 1.125rem;   /* 18px — h2 */
+  --text-3xl: 1.25rem;    /* 20px — h1 */
+  --text-4xl: 1.375rem;   /* 22px — 页面标题 */
+  --text-5xl: 1.625rem;   /* 26px — 大标题 */
 
   /* shadcn highlight 标记色 */
   --highlight: oklch(0.852 0.199 91.936);
