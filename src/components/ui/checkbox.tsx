@@ -7,19 +7,25 @@ import { cn } from "@/lib/utils"
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "grid place-content-center peer size-4 shrink-0 rounded border border-[var(--ink-faded)] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[var(--ink)] data-[state=checked]:text-[var(--paper)]",
+      "grid place-content-center peer size-4 shrink-0 rounded-sm focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className
     )}
+    style={{
+      border: '1.5px solid var(--ink-ghost)',
+      background: 'transparent',
+      ...style,
+    }}
     {...props}
   >
     <CheckboxPrimitive.Indicator
-      className={cn("grid place-content-center text-current")}
+      className="grid place-content-center"
+      style={{ color: 'var(--ink)' }}
     >
-      <Check className="h-4 w-4" />
+      <Check className="size-3.5" strokeWidth={2.5} />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))

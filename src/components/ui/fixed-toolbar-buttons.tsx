@@ -24,6 +24,8 @@ import {
 import { KEYS } from 'platejs';
 import { useEditorRef, useEditorReadOnly, useSelectionFragmentProp } from 'platejs/react';
 
+import { IndentPlugin } from '@platejs/indent/react';
+
 import {
   getBlockType,
   insertBlock,
@@ -159,13 +161,13 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <ToolbarButton
-              onClick={() => editor.tf.indent()}
+              onClick={() => editor.getTransforms(IndentPlugin).indent()}
               tooltip="增加缩进"
             >
               <IndentIncreaseIcon />
             </ToolbarButton>
             <ToolbarButton
-              onClick={() => editor.tf.outdent()}
+              onClick={() => editor.getTransforms(IndentPlugin).outdent()}
               tooltip="减少缩进"
             >
               <IndentDecreaseIcon />
