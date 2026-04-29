@@ -268,7 +268,7 @@
   --color-brand: var(--ink);
 }
 
-/* ========== Editor Caret — 使用醒目的蓝色 ========== */
+/* ========== Editor Caret ========== */
 
 [data-slate-editor] {
   caret-color: var(--mark-blue, #0A84FF);

@@ -302,12 +302,13 @@ const DraftEditPage = () => {
               {actionMessage && <span style={{ color: 'var(--mark-green)' }}>{actionMessage}</span>}
             </div>
             <button
-              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[var(--shelf)]"
+              className="hover-shelf flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200"
               style={{ color: 'var(--ink-faded)' }}
               onClick={() => setTheme(theme === 'daylight' ? 'midnight' : 'daylight')}
               aria-label="切换主题"
             >
-              {theme === 'daylight' ? <Moon size={14} /> : <Sun size={14} />}
+              <Sun size={14} strokeWidth={1.5} className="theme-icon-light" />
+              <Moon size={14} strokeWidth={1.5} className="theme-icon-dark" />
             </button>
             <div className="flex items-center gap-1">
               <ActionPill label="保存" shortcut="⇧⌘S" onClick={() => void saveDraft()} />
@@ -326,7 +327,7 @@ const DraftEditPage = () => {
         {/* Body — editor + right outline */}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto overflow-x-hidden" data-scroll-container>
-            <div className="mx-auto max-w-[900px] px-10 pb-40 pt-10">
+            <div className="mx-auto w-[85%] min-w-[600px] max-w-[960px] pb-40 pt-10">
               <PlateMarkdownEditor
                 key={resetKey}
                 initialMarkdown={state.bodyMarkdown}

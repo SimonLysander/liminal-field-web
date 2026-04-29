@@ -22,12 +22,11 @@ const config: Record<
   string,
   {
     Li: React.FC<PlateElementProps>;
-    Marker: React.FC<PlateElementProps>;
+    Marker?: React.FC<PlateElementProps>;
   }
 > = {
   todo: {
     Li: TodoLi,
-    Marker: TodoMarker,
   },
 };
 
@@ -54,34 +53,21 @@ function List(props: PlateElementProps) {
   );
 }
 
-function TodoMarker(props: PlateElementProps) {
+function TodoLi(props: PlateElementProps) {
   const state = useTodoListElementState({ element: props.element });
   const { checkboxProps } = useTodoListElement(state);
   const readOnly = useReadOnly();
+  const checked = props.element.checked as boolean;
 
   return (
-    <div contentEditable={false}>
-      <Checkbox
-        className={cn(
-          '-left-6 absolute top-1',
-          readOnly && 'pointer-events-none'
-        )}
-        {...checkboxProps}
-      />
-    </div>
-  );
-}
-
-function TodoLi(props: PlateElementProps) {
-  return (
-    <li
-      className={cn(
-        'list-none',
-        (props.element.checked as boolean) &&
-          'text-muted-foreground line-through'
-      )}
-    >
-      {props.children}
+    <li className={cn('flex list-none items-start gap-2', checked && 'text-muted-foreground line-through')}>
+      <span className="mt-1 shrink-0" contentEditable={false}>
+        <Checkbox
+          className={cn('size-4', readOnly && 'pointer-events-none')}
+          {...checkboxProps}
+        />
+      </span>
+      <span className="flex-1">{props.children}</span>
     </li>
   );
 }
