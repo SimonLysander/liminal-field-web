@@ -268,10 +268,22 @@
   --color-brand: var(--ink);
 }
 
-/* ========== Editor Caret ========== */
+/* ========== Editor Caret — 呼吸动画 ========== */
+
+@property --caret-clr {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0A84FF;
+}
 
 [data-slate-editor] {
-  caret-color: var(--mark-blue, #0A84FF);
+  caret-color: var(--caret-clr);
+  animation: caret-breathe 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes caret-breathe {
+  from { --caret-clr: #0A84FF; }
+  to   { --caret-clr: rgba(10, 132, 255, 0.2); }
 }
 
 /* ========== Global Resets & Typography ========== */
