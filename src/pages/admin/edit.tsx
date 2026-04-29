@@ -14,7 +14,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { Sun, Moon } from 'lucide-react';
 import { smoothBounce } from '@/lib/motion';
+import { useTheme } from '@/hooks/use-theme';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type { ContentChangeType, ContentDetail, EditorDraft } from '@/services/workspace';
 import { PlateMarkdownEditor } from './components/PlateEditor';
@@ -34,6 +36,7 @@ const DraftEditPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [state, setState] = useState<EditorState>({
@@ -298,6 +301,14 @@ const DraftEditPage = () => {
               {autosaveError && <span style={{ color: 'var(--mark-red)' }}>{autosaveError}</span>}
               {actionMessage && <span style={{ color: 'var(--mark-green)' }}>{actionMessage}</span>}
             </div>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[var(--shelf)]"
+              style={{ color: 'var(--ink-faded)' }}
+              onClick={() => setTheme(theme === 'daylight' ? 'midnight' : 'daylight')}
+              aria-label="切换主题"
+            >
+              {theme === 'daylight' ? <Moon size={14} /> : <Sun size={14} />}
+            </button>
             <div className="flex items-center gap-1">
               <ActionPill label="保存" shortcut="⇧⌘S" onClick={() => void saveDraft()} />
               <ActionPill label="提交" shortcut="⌘S" primary onClick={() => setShowCommitDialog(true)} />
@@ -315,7 +326,7 @@ const DraftEditPage = () => {
         {/* Body — editor + right outline */}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto overflow-x-hidden" data-scroll-container>
-            <div className="mx-auto max-w-[740px] px-10 pb-40 pt-10">
+            <div className="mx-auto max-w-[900px] px-10 pb-40 pt-10">
               <PlateMarkdownEditor
                 key={resetKey}
                 initialMarkdown={state.bodyMarkdown}

@@ -11,11 +11,14 @@ import {
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
+  IndentDecreaseIcon,
+  IndentIncreaseIcon,
   ItalicIcon,
   PaintBucketIcon,
   PilcrowIcon,
   QuoteIcon,
   StrikethroughIcon,
+  TableIcon,
   UnderlineIcon,
 } from 'lucide-react';
 import { KEYS } from 'platejs';
@@ -23,6 +26,7 @@ import { useEditorRef, useEditorReadOnly, useSelectionFragmentProp } from 'plate
 
 import {
   getBlockType,
+  insertBlock,
   insertInlineElement,
   setBlockType,
 } from '@/components/editor/transforms';
@@ -154,6 +158,27 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
 
           <ToolbarGroup>
+            <ToolbarButton
+              onClick={() => editor.tf.indent()}
+              tooltip="增加缩进"
+            >
+              <IndentIncreaseIcon />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.tf.outdent()}
+              tooltip="减少缩进"
+            >
+              <IndentDecreaseIcon />
+            </ToolbarButton>
+          </ToolbarGroup>
+
+          <ToolbarGroup>
+            <ToolbarButton
+              onClick={() => insertBlock(editor, KEYS.table)}
+              tooltip="插入表格"
+            >
+              <TableIcon />
+            </ToolbarButton>
             <LinkToolbarButton />
             <ToolbarButton
               onClick={() => insertInlineElement(editor, KEYS.date)}
@@ -161,9 +186,6 @@ export function FixedToolbarButtons() {
             >
               <CalendarIcon />
             </ToolbarButton>
-          </ToolbarGroup>
-
-          <ToolbarGroup>
             <MediaToolbarButton nodeType={KEYS.img} />
           </ToolbarGroup>
         </>
