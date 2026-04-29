@@ -605,31 +605,33 @@ export function useAdminWorkspace() {
 
   const handleMoveNode = useCallback(
     (nodeId: string, targetNodeId: string, position: 'before' | 'after' | 'inside') => {
-      /* 计算移动前的 parentId */
       const [, oldParentId] = getSiblings(tree, nodeId);
 
-      /* 乐观更新：立即在本地树中移动节点 */
+      /* 乐观更新 */
       const updated = moveNodeInTree(tree, nodeId, targetNodeId, position);
       setTree(updated);
 
-      /* 确定目标 parentId 和新的兄弟节点顺序 */
       const newParentId = position === 'inside'
         ? targetNodeId
         : getSiblings(updated, targetNodeId)[1];
-      const [newSiblings] = getSiblings(updated, nodeId);
-      const siblingIds = newSiblings.map((s) => s.id);
 
-      /* 异步持久化：跨父级移动时需先更新 parentId，再重排序 */
       const persist = async () => {
         if (oldParentId !== newParentId) {
+          /* 跨父级移动：只更新 parentId，然后重新加载同步服务端顺序 */
           await structureApi.updateNode(nodeId, {
             parentId: newParentId ?? undefined,
           });
+          void loadRoots();
+        } else {
+          /* 同父级排序：直接 reorder */
+          const [newSiblings] = getSiblings(updated, nodeId);
+          const siblingIds = newSiblings.map((s) => s.id);
+          await structureApi.reorderSiblings(newParentId, siblingIds);
         }
-        await structureApi.reorderSiblings(newParentId, siblingIds);
       };
 
-      void persist().catch(() => {
+      void persist().catch((err) => {
+        console.error('[DnD] 节点移动失败，回滚:', err);
         void loadRoots();
       });
     },

@@ -32,7 +32,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             <h1
               {...props}
               data-heading-id={hid}
-              className="mb-3 mt-8 font-bold leading-snug text-ink text-3xl tracking-[-0.02em]"
+              className="mb-3 mt-8 font-bold font-heading leading-snug text-ink text-3xl tracking-[-0.02em]"
             >
               {children}
             </h1>
@@ -44,7 +44,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             <h2
               {...props}
               data-heading-id={hid}
-              className="mb-2.5 mt-7 font-semibold leading-snug text-ink text-xl tracking-[-0.015em]"
+              className="mb-2.5 mt-7 font-semibold font-heading leading-snug text-ink text-2xl tracking-[-0.015em]"
             >
               {children}
             </h2>
@@ -56,7 +56,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             <h3
               {...props}
               data-heading-id={hid}
-              className="mb-2 mt-6 font-semibold text-ink text-md"
+              className="mb-2 mt-6 font-semibold font-heading text-ink text-xl"
             >
               {children}
             </h3>
