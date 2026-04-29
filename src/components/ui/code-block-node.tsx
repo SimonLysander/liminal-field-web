@@ -34,7 +34,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 
   return (
     <PlateElement {...props}>
-      <div className="relative my-4 rounded-lg bg-shelf">
+      <div className="relative my-4 rounded-lg bg-muted/50">
         <pre className="overflow-x-auto p-4 font-mono leading-relaxed [tab-size:2] print:break-inside-avoid" style={{ fontSize: 'var(--text-sm)' }}>
           <code>{props.children}</code>
         </pre>
