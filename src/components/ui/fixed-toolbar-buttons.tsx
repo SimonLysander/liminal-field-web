@@ -2,6 +2,7 @@
 
 import type { TElement } from 'platejs';
 
+import { useIndentButton, useOutdentButton } from '@platejs/indent/react';
 import {
   BaselineIcon,
   BoldIcon,
@@ -23,8 +24,6 @@ import {
 } from 'lucide-react';
 import { KEYS } from 'platejs';
 import { useEditorRef, useEditorReadOnly, useSelectionFragmentProp } from 'platejs/react';
-
-import { IndentPlugin } from '@platejs/indent/react';
 
 import {
   getBlockType,
@@ -160,18 +159,8 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <ToolbarButton
-              onClick={() => editor.getTransforms(IndentPlugin).indent()}
-              tooltip="增加缩进"
-            >
-              <IndentIncreaseIcon />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.getTransforms(IndentPlugin).outdent()}
-              tooltip="减少缩进"
-            >
-              <IndentDecreaseIcon />
-            </ToolbarButton>
+            <IndentToolbarButton />
+            <OutdentToolbarButton />
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -193,5 +182,23 @@ export function FixedToolbarButtons() {
         </>
       )}
     </div>
+  );
+}
+
+function IndentToolbarButton() {
+  const { props } = useIndentButton();
+  return (
+    <ToolbarButton tooltip="增加缩进" {...props}>
+      <IndentIncreaseIcon />
+    </ToolbarButton>
+  );
+}
+
+function OutdentToolbarButton() {
+  const { props } = useOutdentButton();
+  return (
+    <ToolbarButton tooltip="减少缩进" {...props}>
+      <IndentDecreaseIcon />
+    </ToolbarButton>
   );
 }
