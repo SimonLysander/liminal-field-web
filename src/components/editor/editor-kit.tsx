@@ -7,6 +7,8 @@
 
 'use client';
 
+import { ExitBreakPlugin, TrailingBlockPlugin } from 'platejs/react';
+
 import { BasicNodesKit } from './plugins/basic-nodes-kit';
 import { CodeBlockKit } from './plugins/code-block-kit';
 import { DateKit } from './plugins/date-kit';
@@ -29,4 +31,15 @@ export const EditorKit = [
   ...MediaKit,
   ...FontKit,
   ...MarkdownKit,
+
+  /* ⌘+Enter 跳出代码块/引用等嵌套结构，在后面插入新段落 */
+  ExitBreakPlugin.configure({
+    shortcuts: {
+      insert: { keys: 'mod+enter' },
+      insertBefore: { keys: 'mod+shift+enter' },
+    },
+  }),
+
+  /* 文档末尾始终保留一个空段落，确保能在最后一个块后继续输入 */
+  TrailingBlockPlugin,
 ];
