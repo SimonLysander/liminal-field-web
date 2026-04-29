@@ -35,8 +35,8 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
   return (
     <PlateElement {...props}>
       <div className="relative my-4 rounded-lg bg-muted">
-        <pre className="overflow-x-auto p-4 font-mono leading-relaxed [tab-size:2] print:break-inside-avoid" style={{ fontSize: 'var(--text-sm)' }}>
-          {props.children}
+        <pre className="overflow-x-auto p-4 pr-24 font-mono leading-relaxed [tab-size:2] print:break-inside-avoid" style={{ fontSize: 'var(--text-sm)' }}>
+          <code className="block">{props.children}</code>
         </pre>
 
         <div
@@ -184,7 +184,7 @@ function CopyButton({
 }
 
 export function CodeLineElement(props: PlateElementProps) {
-  return <PlateElement {...props} />;
+  return <PlateElement className="min-h-[1.5em]" {...props} />;
 }
 
 export function CodeSyntaxLeaf(props: PlateLeafProps<TCodeSyntaxLeaf>) {
