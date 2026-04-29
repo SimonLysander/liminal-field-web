@@ -6,14 +6,7 @@ import {
   CodeLinePlugin,
   CodeSyntaxPlugin,
 } from '@platejs/code-block/react';
-import { createLowlight } from 'lowlight';
-import css from 'highlight.js/lib/languages/css';
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import python from 'highlight.js/lib/languages/python';
-import bash from 'highlight.js/lib/languages/bash';
-import cpp from 'highlight.js/lib/languages/cpp';
-import xml from 'highlight.js/lib/languages/xml';
+import { common, createLowlight } from 'lowlight';
 
 import {
   CodeBlockElement,
@@ -21,13 +14,8 @@ import {
   CodeSyntaxLeaf,
 } from '@/components/ui/code-block-node';
 
-const lowlight = createLowlight();
-lowlight.register({ css, javascript, typescript, python, bash, cpp, xml });
-lowlight.registerAlias('xml', ['html']);
-lowlight.registerAlias('bash', ['shell', 'sh']);
-lowlight.registerAlias('javascript', ['js']);
-lowlight.registerAlias('typescript', ['ts']);
-lowlight.registerAlias('cpp', ['c++']);
+/* common 预设包含 bash/css/js/ts/python/cpp/xml 等常用语言 */
+const lowlight = createLowlight(common);
 
 export const CodeBlockKit = [
   CodeBlockPlugin.configure({
