@@ -8,11 +8,10 @@ export interface ApiResponse<T = unknown> {
 
 /** 带 code 的 Error，上层可通过 isApiError() 精确判断错误类型 */
 export class ApiError extends Error {
-  constructor(
-    public readonly code: number,
-    message: string,
-  ) {
+  readonly code: number;
+  constructor(code: number, message: string) {
     super(message);
+    this.code = code;
   }
 }
 

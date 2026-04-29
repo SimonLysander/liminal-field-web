@@ -229,7 +229,7 @@ export default function Sidebar() {
 
       {/* Search trigger */}
       <button
-        className="sidebar-search mb-2.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-all duration-150"
+        className="sidebar-search mb-2.5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[14px] transition-all duration-150"
         style={{
           background: 'var(--shelf)',
           color: 'var(--ink-ghost)',
