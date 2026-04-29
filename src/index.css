@@ -268,22 +268,19 @@
   --color-brand: var(--ink);
 }
 
-/* ========== Editor Caret — 呼吸动画 ========== */
-
-@property --caret-clr {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #1D1D1F;
-}
+/* ========== Editor Caret — 隐藏原生光标，使用 FakeCaret 组件 ========== */
 
 [data-slate-editor] {
-  caret-color: var(--caret-clr);
-  animation: caret-breathe 1.4s ease-in-out infinite alternate;
+  caret-color: transparent;
+}
+
+.fake-caret {
+  animation: caret-breathe 2s ease-in-out infinite;
 }
 
 @keyframes caret-breathe {
-  from { --caret-clr: var(--ink, #1D1D1F); }
-  to   { --caret-clr: var(--ink-faded, #6E6E73); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
 }
 
 /* ========== Global Resets & Typography ========== */
