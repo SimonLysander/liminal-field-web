@@ -14,7 +14,6 @@ import { LinkKit } from './plugins/link-kit';
 import { ListKit } from './plugins/list-kit';
 import { TableKit } from './plugins/table-kit';
 import { MediaKit } from './plugins/media-kit';
-import { CalloutKit } from './plugins/callout-kit';
 import { FontKit } from './plugins/font-kit';
 import { MarkdownKit } from './plugins/markdown-kit';
 
@@ -25,7 +24,6 @@ export const EditorKit = [
   ...ListKit,
   ...TableKit,
   ...MediaKit,
-  ...CalloutKit,
   ...FontKit,
   ...MarkdownKit,
 ];

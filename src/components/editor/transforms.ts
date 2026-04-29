@@ -2,7 +2,6 @@
 
 import type { PlateEditor } from 'platejs/react';
 
-import { insertCallout } from '@platejs/callout';
 import { insertCodeBlock, toggleCodeBlock } from '@platejs/code-block';
 import { triggerFloatingLink } from '@platejs/link/react';
 import {
@@ -51,7 +50,6 @@ const insertBlockMap: Record<
   [KEYS.ol]: insertList,
   [KEYS.ul]: insertList,
   [KEYS.audio]: (editor) => insertAudioPlaceholder(editor, { select: true }),
-  [KEYS.callout]: (editor) => insertCallout(editor, { select: true }),
   [KEYS.codeBlock]: (editor) => insertCodeBlock(editor, { select: true }),
   [KEYS.file]: (editor) => insertFilePlaceholder(editor, { select: true }),
   [KEYS.img]: (editor) =>
