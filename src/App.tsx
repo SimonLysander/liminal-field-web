@@ -19,8 +19,10 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { smoothBounce } from './lib/motion';
 import { authApi } from '@/services/auth';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import Sidebar from './components/global/Sidebar';
 import Topbar from './components/global/Topbar';
@@ -126,42 +128,56 @@ function MainLayout() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route
-        path="/login"
-        element={
-          <Suspense fallback={null}>
-            <LoginPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <AuthGuard>
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route
+          path="/login"
+          element={
             <Suspense fallback={null}>
-              <AdminShell />
+              <LoginPage />
             </Suspense>
-          </AuthGuard>
-        }
-      >
-        <Route index element={<Navigate to="/admin/content" replace />} />
-        <Route path="content" element={<Suspense fallback={null}><ContentAdmin /></Suspense>} />
-        <Route path="gallery" element={<Suspense fallback={null}><GalleryAdmin /></Suspense>} />
-      </Route>
-      <Route
-        path="/admin/edit/:id"
-        element={
-          <AuthGuard>
-            <Suspense fallback={null}>
-              <DraftEditPage />
-            </Suspense>
-          </AuthGuard>
-        }
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AuthGuard>
+              <Suspense fallback={null}>
+                <AdminShell />
+              </Suspense>
+            </AuthGuard>
+          }
+        >
+          <Route index element={<Navigate to="/admin/content" replace />} />
+          <Route path="content" element={<Suspense fallback={null}><ContentAdmin /></Suspense>} />
+          <Route path="gallery" element={<Suspense fallback={null}><GalleryAdmin /></Suspense>} />
+        </Route>
+        <Route
+          path="/admin/edit/:id"
+          element={
+            <AuthGuard>
+              <Suspense fallback={null}>
+                <DraftEditPage />
+              </Suspense>
+            </AuthGuard>
+          }
+        />
+        <Route path="/*" element={<MainLayout />} />
+      </Routes>
+      {/* 全局 toast 容器——样式对齐设计系统 token */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: 'var(--shelf)',
+            color: 'var(--ink)',
+            border: '0.5px solid var(--separator)',
+            borderRadius: 'var(--radius-md)',
+          },
+        }}
       />
-      <Route path="/*" element={<MainLayout />} />
-    </Routes>
+    </ErrorBoundary>
   );
 }
 
