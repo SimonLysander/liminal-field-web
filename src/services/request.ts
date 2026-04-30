@@ -32,6 +32,14 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
     },
   });
 
+  // 登录态过期——静默跳转登录页（不弹错误提示）
+  if (res.status === 401) {
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+    throw new ApiError(401, '需要登录');
+  }
+
   const text = await res.text();
   if (!text) {
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
