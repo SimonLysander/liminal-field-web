@@ -1,55 +1,84 @@
 /*
  * ContentAdmin — 笔记内容管理模块
  *
- * 从原 AdminPage 拆分而来，承载所有笔记管理功能。
- * 布局：TreePanel + 中间内容预览 + 右侧上下文面板。
- * AdminShell 提供外层容器（h-screen + Topbar），本组件只负责内容区域。
+ * 布局：AdminStructurePanel（面包屑钻入列表）+ 中间内容预览 + 右侧上下文面板。
+ * AdminShell 提供外层容器（h-screen + IconRail），本组件只负责内容区域。
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { smoothBounce } from '@/lib/motion';
 import { notesApi as contentItemsApi } from '@/services/workspace';
+import { extractHeadings, type TocEntry } from '@/lib/markdown';
 import Topbar from '@/components/global/Topbar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ContentVersionView } from '../components/ContentVersionView';
 import { FolderDetailPanel } from '../components/FolderDetailPanel';
 import { NodeFormModal } from '../components/NodeFormModal';
-import { TreePanel } from '../components/TreePanel';
+import { AdminStructurePanel } from '../components/AdminStructurePanel';
+import { MoveToDialog } from '../components/MoveToDialog';
 import { useAdminWorkspace } from '../hooks/useAdminWorkspace';
-import { findNodeInTree } from '../helpers';
 import type { DraftPresence } from '../types';
-import type { ContentHistoryEntry, ListedAsset } from '@/services/workspace';
+import type { ContentHistoryEntry } from '@/services/workspace';
 
 const ContentAdmin = () => {
   const workspace = useAdminWorkspace();
   const navigate = useNavigate();
-  const location = useLocation();
+  /* 选中节点的恢复由 useAdminWorkspace 的 URL 同步处理 */
 
-  /* 从编辑页提交后跳回时，自动选中对应的节点 */
-  useEffect(() => {
-    const state = location.state as { selectContentItemId?: string } | null;
-    if (!state?.selectContentItemId || workspace.loading || workspace.tree.length === 0) return;
+  /* ---- TOC ----
+   * 数据：useMemo 从 bodyMarkdown 纯函数提取（不碰 DOM，无时序问题）
+   * 交互：scroll spy + 点击跳转用 DOM ref（按索引定位，不匹配 ID）
+   */
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
-    const findByContentItemId = (nodes: typeof workspace.tree): typeof workspace.tree[0] | null => {
-      for (const node of nodes) {
-        if (node.contentItemId === state.selectContentItemId) return node;
-        if (node.children) {
-          const found = findByContentItemId(node.children);
-          if (found) return found;
-        }
+  const bodyMarkdown = workspace.preview?.bodyMarkdown ?? workspace.formalContent.bodyMarkdown;
+  const toc = useMemo(() => extractHeadings(bodyMarkdown), [bodyMarkdown]);
+
+  /** 获取预览区内所有 heading DOM 元素 */
+  const getHeadingEls = useCallback(
+    () => previewRef.current?.querySelectorAll<HTMLElement>('[data-heading-id]'),
+    [],
+  );
+
+  /* Scroll spy */
+  const handlePreviewScroll = useCallback(() => {
+    const container = previewRef.current;
+    const els = getHeadingEls();
+    if (!container || !els || els.length === 0) return;
+    const threshold = container.getBoundingClientRect().top + 50;
+    for (let i = els.length - 1; i >= 0; i--) {
+      if (els[i].getBoundingClientRect().top <= threshold) {
+        setActiveIndex(i);
+        return;
       }
-      return null;
-    };
-
-    const node = findByContentItemId(workspace.tree);
-    if (node) {
-      workspace.setSelectedNode(node);
-      /* 清掉 state 防止重复触发 */
-      navigate(location.pathname, { replace: true, state: null });
     }
-  }, [workspace.loading, workspace.tree, location.state]);
+    setActiveIndex(0);
+  }, [getHeadingEls]);
+
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handlePreviewScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handlePreviewScroll);
+  }, [handlePreviewScroll]);
+
+  /* 点击跳转 + 高亮 */
+  const scrollToHeading = useCallback((index: number) => {
+    const els = getHeadingEls();
+    const container = previewRef.current;
+    if (!els || !els[index] || !container) return;
+    const el = els[index];
+    const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
+    container.scrollTo({ top, behavior: 'smooth' });
+
+    el.classList.remove('toc-highlight');
+    void el.offsetWidth;
+    el.classList.add('toc-highlight');
+    el.addEventListener('animationend', () => el.classList.remove('toc-highlight'), { once: true });
+  }, [getHeadingEls]);
 
   const editUrl = workspace.selectedNode?.contentItemId
     ? `/admin/edit/${workspace.selectedNode.contentItemId}`
@@ -65,23 +94,26 @@ const ContentAdmin = () => {
 
   return (
     <>
-      {/* TreePanel — AdminShell 的 IconRail 容器提供左侧卡片效果 */}
-      <TreePanel
-        tree={workspace.tree}
+      {/* 面包屑钻入导航面板 */}
+      <AdminStructurePanel
+        nodes={workspace.nodes}
         loading={workspace.loading}
         error={workspace.error}
         selectedNodeId={workspace.selectedNode?.id ?? null}
-        totalNodes={workspace.totalNodes}
-        onReload={workspace.loadRoots}
-        onSelect={workspace.setSelectedNode}
-        onExpand={workspace.handleExpand}
+        breadcrumb={workspace.breadcrumb}
+        currentParentId={workspace.currentParentId}
+        onReload={workspace.reloadLevel}
+        onSelect={workspace.selectNode}
+        onEnterFolder={workspace.enterFolder}
+        onGoToBreadcrumb={workspace.goToBreadcrumb}
         onAddChild={workspace.openCreate}
         onEdit={workspace.openEdit}
         onDelete={workspace.setDeleteTarget}
-        onMoveNode={workspace.handleMoveNode}
+        onMoveTo={workspace.setMoveTarget}
+        onReorder={workspace.reorderNodes}
       />
 
-      {/* Main content area — Topbar 在此列顶部，不覆盖 TreePanel */}
+      {/* Main content area */}
       <main
         className="relative z-0 flex flex-1 flex-col overflow-hidden"
         style={{ background: 'var(--paper)' }}
@@ -90,7 +122,8 @@ const ContentAdmin = () => {
         <div className="flex flex-1 overflow-hidden">
           {/* Center — content preview */}
           <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-10 py-9">
+            <div className="flex-1 overflow-y-auto px-10 py-9" ref={previewRef}>
+              <div className="mx-auto max-w-[740px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={workspace.selectedNode?.id ?? 'empty'}
@@ -100,7 +133,7 @@ const ContentAdmin = () => {
                   transition={{ duration: 0.2, ease: smoothBounce }}
                 >
                   {!workspace.selectedNode ? (
-                    <EmptyState title="未选择节点" subtitle="从左侧树中选择一个文件夹或文档开始。" />
+                    <EmptyState title="未选择节点" subtitle="从左侧列表中选择一个文件夹或文档开始。" />
                   ) : workspace.selectedNode.type === 'FOLDER' ? (
                     <FolderDetailPanel node={workspace.selectedNode} />
                   ) : workspace.selectedNode.contentItemId ? (
@@ -123,19 +156,21 @@ const ContentAdmin = () => {
                   )}
                 </motion.div>
               </AnimatePresence>
+              </div>
             </div>
           </div>
 
           {/* Right — contextual side panel */}
           <aside
-            className="flex w-[240px] shrink-0 flex-col overflow-y-auto px-5 py-7"
+            className="flex w-[280px] shrink-0 flex-col overflow-hidden px-5 py-7"
             style={{ borderLeft: '0.5px solid var(--separator)' }}
           >
             {workspace.selectedNode?.contentItemId ? (
               <FormalSidePanel
+                toc={toc}
+                activeIndex={activeIndex}
+                onScrollToHeading={scrollToHeading}
                 draftPresence={workspace.draftPresence}
-                assets={workspace.assets}
-                assetsLoading={workspace.assetsLoading}
                 history={workspace.history}
                 historyLoading={workspace.historyLoading}
                 publishedHash={workspace.formalContent.publishedVersion?.commitHash ?? null}
@@ -170,6 +205,15 @@ const ContentAdmin = () => {
           onCancel={() => workspace.setDeleteTarget(null)}
         />
       )}
+      {workspace.moveTarget && (
+        <MoveToDialog
+          node={workspace.moveTarget}
+          onConfirm={(targetFolderId) =>
+            workspace.moveNodeToFolder(workspace.moveTarget!.id, targetFolderId)
+          }
+          onClose={() => workspace.setMoveTarget(null)}
+        />
+      )}
     </>
   );
 };
@@ -177,9 +221,10 @@ const ContentAdmin = () => {
 /* ---------- Side panel sections ---------- */
 
 function FormalSidePanel({
+  toc,
+  activeIndex,
+  onScrollToHeading,
   draftPresence,
-  assets,
-  assetsLoading,
   history,
   historyLoading,
   publishedHash,
@@ -188,9 +233,10 @@ function FormalSidePanel({
   onOverwriteDraft,
   onSelectVersion,
 }: {
+  toc: TocEntry[];
+  activeIndex: number;
+  onScrollToHeading: (index: number) => void;
   draftPresence: DraftPresence;
-  assets: ListedAsset[];
-  assetsLoading: boolean;
   history: ContentHistoryEntry[];
   historyLoading: boolean;
   publishedHash: string | null;
@@ -200,9 +246,50 @@ function FormalSidePanel({
   onSelectVersion: (commitHash: string) => Promise<void>;
 }) {
   return (
-    <>
-      {/* Draft / edit entry */}
-      <SideSection title="编辑">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* 大纲 — flex-1，内部滚动 */}
+      {toc.length > 0 && (
+        <div className="mb-5 flex min-h-0 flex-1 flex-col">
+          <div
+            className="mb-2.5 shrink-0 font-semibold uppercase"
+            style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.06em' }}
+          >
+            大纲
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {toc.map((item, i) => {
+              const isActive = activeIndex === i;
+              return (
+                <motion.div
+                  key={item.index}
+                  className="cursor-pointer border-l-2 py-[5px] transition-all duration-200"
+                  style={{
+                    color: isActive ? 'var(--ink)' : 'var(--ink-faded)',
+                    fontWeight: isActive ? 500 : 400,
+                    fontSize: 'var(--text-sm)',
+                    borderColor: isActive ? 'var(--ink)' : 'transparent',
+                    paddingLeft: `${(item.level - 1) * 8 + 10}px`,
+                  }}
+                  animate={{ paddingLeft: isActive ? (item.level - 1) * 8 + 12 : (item.level - 1) * 8 + 10 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  onClick={() => onScrollToHeading(i)}
+                >
+                  {item.text}
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 编辑 — shrink-0，固定高度 */}
+      <div className="mb-5 shrink-0">
+        <div
+          className="mb-2.5 font-semibold uppercase"
+          style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.06em' }}
+        >
+          编辑
+        </div>
         <div
           className="rounded-[10px] p-4"
           style={{ border: '1px solid var(--box-border)', background: 'var(--shelf)' }}
@@ -228,27 +315,32 @@ function FormalSidePanel({
             </>
           )}
         </div>
-      </SideSection>
+      </div>
 
-      <SideSection title="版本">
-        {historyLoading ? (
-          <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>加载中...</p>
-        ) : history.length === 0 ? (
-          <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>暂无版本</p>
-        ) : (
-          <VersionTimeline
-            history={history}
-            publishedHash={publishedHash}
-            activePreviewHash={activePreviewHash}
-            onSelect={(hash) => void onSelectVersion(hash)}
-          />
-        )}
-      </SideSection>
-
-      <SideSection title="附件">
-        <AssetList assets={assets} loading={assetsLoading} />
-      </SideSection>
-    </>
+      {/* 版本 — flex-1，内部滚动 */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          className="mb-2.5 shrink-0 font-semibold uppercase"
+          style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)', letterSpacing: '0.06em' }}
+        >
+          版本
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {historyLoading ? (
+            <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>加载中...</p>
+          ) : history.length === 0 ? (
+            <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>暂无版本</p>
+          ) : (
+            <VersionTimeline
+              history={history}
+              publishedHash={publishedHash}
+              activePreviewHash={activePreviewHash}
+              onSelect={(hash) => void onSelectVersion(hash)}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -265,11 +357,11 @@ function VersionTimeline({
 }) {
   return (
     <div className="relative" style={{ paddingLeft: 16 }}>
-      {/* Vertical line */}
+      {/* Vertical line — 居中对齐圆点（圆点 center = left -12 + 16 + 3.5 = 7.5） */}
       <div
         className="absolute"
         style={{
-          left: 5,
+          left: 7,
           top: 8,
           bottom: 8,
           width: 1,
@@ -279,7 +371,10 @@ function VersionTimeline({
       {history.map((entry, i) => {
         const isPublished = publishedHash === entry.commitHash;
         const isFirst = i === 0;
-        const isActive = activePreviewHash === entry.commitHash;
+        /* 没有预览旧版本时，默认高亮最新版本 */
+        const isActive = activePreviewHash
+          ? activePreviewHash === entry.commitHash
+          : isFirst;
         const title = entry.message.split(' | ')[1]?.trim()
           || (entry.action === 'commit' ? '正式版本提交' : '版本更新');
 
@@ -409,37 +504,6 @@ function SideLink({
     >
       {label}
     </button>
-  );
-}
-
-function AssetList({
-  assets,
-  loading,
-}: {
-  assets: ListedAsset[];
-  loading: boolean;
-}) {
-  if (loading) return <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>加载中...</p>;
-  if (assets.length === 0) return <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>暂无附件</p>;
-
-  return (
-    <div className="space-y-2">
-      {assets.map((asset) => (
-        <div
-          key={asset.path}
-          className="rounded-[10px] px-3.5 py-3"
-          style={{ border: '1px solid var(--box-border)', background: 'var(--shelf)' }}
-        >
-          <div className="font-medium" style={{ color: 'var(--ink-light)', fontSize: 'var(--text-xs)' }}>{asset.fileName}</div>
-          <div className="mt-0.5 font-mono" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)' }}>{asset.path}</div>
-          <div className="mt-1">
-            <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-2xs)' }}>
-              {asset.type} · {asset.size} bytes
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 

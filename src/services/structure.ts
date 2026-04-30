@@ -20,7 +20,7 @@ export interface CreateStructureNodeDto {
 }
 export interface UpdateStructureNodeDto {
   name?: string;
-  parentId?: string;
+  parentId?: string | null;
   contentItemId?: string;
   sortOrder?: number;
 }

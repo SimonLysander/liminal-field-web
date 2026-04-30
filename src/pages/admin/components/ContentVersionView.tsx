@@ -100,7 +100,7 @@ export const ContentVersionView = ({
         <div>
           <h2
             className="font-bold"
-            style={{ color: 'var(--ink)', fontSize: 'var(--text-4xl)', letterSpacing: '-0.025em' }}
+            style={{ color: 'var(--ink)', fontSize: 'var(--text-5xl)', fontFamily: 'var(--font-serif)', letterSpacing: '-0.025em' }}
           >
             {node.name}
           </h2>
@@ -201,8 +201,8 @@ export const ContentVersionView = ({
           </span>
         </div>
         <div
-          className="max-h-[500px] overflow-auto p-5 leading-[1.8]"
-          style={{ fontSize: 'var(--text-base)' }}
+          className="p-5 leading-[1.9]"
+          style={{ fontSize: 'var(--text-lg)' }}
         >
           <MarkdownBody markdown={(preview ? preview.bodyMarkdown : content.bodyMarkdown) || ''} />
         </div>

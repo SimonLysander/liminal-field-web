@@ -6,9 +6,9 @@
  */
 
 import { formatDate } from '../helpers';
-import type { TreeNode } from '../types';
+import type { StructureNode } from '@/services/structure';
 
-export const FolderDetailPanel = ({ node }: { node: TreeNode | null }) => {
+export const FolderDetailPanel = ({ node }: { node: StructureNode | null }) => {
   if (!node) {
     return (
       <div className="flex flex-col items-center justify-center py-24">

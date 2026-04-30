@@ -207,9 +207,7 @@ const DraftEditPage = () => {
       setShowCommitDialog(false);
       setActionMessage('已提交正式版本');
 
-      setTimeout(() => navigate('/admin/content', {
-        state: { selectContentItemId: id },
-      }), 1200);
+      setTimeout(() => navigate(-1), 1200);
     } catch (commitError) {
       setError(parseError(commitError, '提交失败'));
     }
@@ -222,7 +220,7 @@ const DraftEditPage = () => {
 
     try {
       await contentItemsApi.deleteDraft(id);
-      navigate('/admin');
+      navigate(-1);
     } catch (discardError) {
       setError(parseError(discardError, '丢弃失败'));
     }
@@ -257,7 +255,7 @@ const DraftEditPage = () => {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3" style={{ background: 'var(--paper)' }}>
         <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-base)' }}>{error}</p>
-        <button style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-base)' }} onClick={() => navigate('/admin')}>
+        <button style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-base)' }} onClick={() => navigate(-1)}>
           返回管理后台
         </button>
       </div>
@@ -275,7 +273,7 @@ const DraftEditPage = () => {
           <button
             className="hover-shelf shrink-0 rounded-md px-2 py-1 transition-colors duration-150"
             style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-base)' }}
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate(-1)}
           >
             ←
           </button>

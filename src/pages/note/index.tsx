@@ -19,7 +19,7 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
 import { notesApi as contentItemsApi } from '@/services/workspace';
@@ -33,7 +33,8 @@ import { BookOpen, X, Sparkles } from 'lucide-react';
  * ================================================================ */
 
 export default function NotePage() {
-  const { noteId } = useParams<{ noteId?: string; topicId?: string }>();
+  const [searchParams] = useSearchParams();
+  const noteId = searchParams.get('doc');
   return noteId ? <NoteReader id={noteId} /> : <NoteListView />;
 }
 
@@ -50,7 +51,7 @@ function NoteListView() {
       >
         <BookOpen size={32} strokeWidth={1.2} style={{ color: 'var(--ink-ghost)', opacity: 0.5 }} />
         <span
-          className="text-[15px] font-medium"
+          className="text-lg font-medium"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.01em' }}
         >
           选择一篇笔记开始阅读
@@ -179,7 +180,7 @@ function NoteReader({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <span className="text-[14px]" style={{ color: 'var(--ink-ghost)' }}>加载中...</span>
+        <span className="text-md" style={{ color: 'var(--ink-ghost)' }}>加载中...</span>
       </div>
     );
   }
@@ -187,8 +188,8 @@ function NoteReader({ id }: { id: string }) {
   if (error || !content) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3">
-        <span className="text-[14px]" style={{ color: 'var(--mark-red)' }}>{error || '文章不存在'}</span>
-        <button className="text-[14px]" style={{ color: 'var(--ink-faded)' }} onClick={() => navigate('/note')}>
+        <span className="text-md" style={{ color: 'var(--mark-red)' }}>{error || '文章不存在'}</span>
+        <button className="text-md" style={{ color: 'var(--ink-faded)' }} onClick={() => navigate('/note')}>
           ← 返回列表
         </button>
       </div>
@@ -202,20 +203,20 @@ function NoteReader({ id }: { id: string }) {
        <div className="mx-auto max-w-[740px] px-10">
         <div className="mb-5 flex items-center gap-3">
           <button
-            className="text-[14px] transition-colors duration-150"
+            className="text-md transition-colors duration-150"
             style={{ color: 'var(--ink-ghost)' }}
-            onClick={() => navigate('/note')}
+            onClick={() => navigate(-1)}
           >
             ← 返回
           </button>
-          <span className="text-[14px]" style={{ color: 'var(--ink-ghost)' }}>
+          <span className="text-md" style={{ color: 'var(--ink-ghost)' }}>
             约 {wordCount > 1000 ? `${(wordCount / 1000).toFixed(1)}k` : wordCount} 字 · {readMin} min
           </span>
         </div>
 
         {/* 文章标题 */}
         <div
-          className="relative mb-10 text-[1.5rem] font-bold leading-snug"
+          className="relative mb-10 text-5xl font-bold leading-snug"
           style={{
             fontFamily: 'var(--font-serif)',
             color: 'var(--ink)',
@@ -231,7 +232,7 @@ function NoteReader({ id }: { id: string }) {
 
         {summary && (
           <div
-            className="mb-8 text-[15px] leading-relaxed"
+            className="mb-8 text-lg leading-relaxed"
             style={{ color: 'var(--ink-faded)', fontStyle: 'italic' }}
           >
             {summary}
@@ -253,7 +254,7 @@ function NoteReader({ id }: { id: string }) {
         >
           <div>
             <div
-              className="mb-3 text-[12px] font-semibold uppercase"
+              className="mb-3 text-2xs font-semibold uppercase"
               style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
             >
               目录
@@ -261,7 +262,7 @@ function NoteReader({ id }: { id: string }) {
             {toc.map((item) => (
               <motion.div
                 key={item.id}
-                className="cursor-pointer border-l-2 py-[5px] text-[14px] transition-all duration-200"
+                className="cursor-pointer border-l-2 py-[5px] text-sm transition-all duration-200"
                 style={{
                   color: activeToc === item.id ? 'var(--ink)' : 'var(--ink-faded)',
                   fontWeight: activeToc === item.id ? 500 : 400,
@@ -297,7 +298,7 @@ function NoteReader({ id }: { id: string }) {
               transition={{ duration: 0.18, ease: smoothBounce }}
             >
               <div className="flex items-center justify-between px-[18px] pb-3 pt-3.5">
-                <span className="truncate text-[14px] font-semibold" style={{ color: 'var(--ink)' }}>
+                <span className="truncate text-md font-semibold" style={{ color: 'var(--ink)' }}>
                   {title}
                 </span>
                 <button
@@ -309,7 +310,7 @@ function NoteReader({ id }: { id: string }) {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-[18px] pb-4 pt-2" style={{ minHeight: 140 }}>
-                <div className="px-3 py-8 text-center text-[14px] leading-relaxed" style={{ color: 'var(--ink-ghost)' }}>
+                <div className="px-3 py-8 text-center text-md leading-relaxed" style={{ color: 'var(--ink-ghost)' }}>
                   对这篇文稿的任何想法，随时问
                 </div>
               </div>
@@ -317,7 +318,7 @@ function NoteReader({ id }: { id: string }) {
                 <input
                   ref={aiInputRef}
                   type="text"
-                  className="w-full rounded-full border-none px-3.5 py-2.5 text-[14px] outline-none"
+                  className="w-full rounded-full border-none px-3.5 py-2.5 text-md outline-none"
                   style={{ background: 'var(--paper-dark)', color: 'var(--ink)' }}
                   placeholder="提问..."
                   onKeyDown={(e) => e.key === 'Escape' && setAiOpen(false)}

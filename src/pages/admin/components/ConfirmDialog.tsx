@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
 import { structureApi, type DeleteStats } from '@/services/structure';
 import { parseError } from '../helpers';
-import type { TreeNode } from '../types';
+import type { StructureNode } from '@/services/structure';
 
 /**
  * Confirm dialog for destructive actions (delete node).
@@ -16,7 +16,7 @@ export const ConfirmDialog = ({
   onConfirm,
   onCancel,
 }: {
-  node: TreeNode;
+  node: StructureNode;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
 }) => {

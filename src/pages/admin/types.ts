@@ -22,7 +22,7 @@ export type ModalMode = 'create' | 'edit';
 export type ModalState = {
   open: boolean;
   mode: ModalMode;
-  node?: TreeNode;
+  node?: StructureNode;
   parentId?: string;
 };
 
@@ -63,7 +63,7 @@ export type PreviewState = {
 };
 
 export type ContentVersionViewProps = {
-  node: TreeNode;
+  node: StructureNode;
   content: FormalContentState;
   loading: boolean;
   error: string;
@@ -78,7 +78,7 @@ export type ContentVersionViewProps = {
 };
 
 export type DraftWorkspaceProps = {
-  node: TreeNode;
+  node: StructureNode;
   formalStatus: ContentStatus;
   draftState: DraftEditorState;
   draftPresence: DraftPresence;

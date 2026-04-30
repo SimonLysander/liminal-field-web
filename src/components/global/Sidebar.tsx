@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { structureApi } from '@/services/structure';
 import type { StructureNode } from '@/services/structure';
 import {
@@ -27,7 +27,6 @@ import {
   Sparkles,
   Search,
   Folder,
-  File,
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
@@ -130,33 +129,29 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const active = pathToSpace(location.pathname);
 
-  /* 从 pathname 解析当前 noteId / topicId
-   * Sidebar 渲染在 <Routes> 外层，useParams() 不可用，
-   * 用正则从 location.pathname 提取：
-   *   /note/:noteId                → 根级文稿
-   *   /note/topic/:topicId         → 主题目录
-   *   /note/topic/:topicId/:noteId → 主题下的文稿 */
-  const activeTopicId = (() => {
-    const m = location.pathname.match(/^\/note\/topic\/([^/]+)/);
-    return m ? m[1] : null;
-  })();
-
-  const activeNoteId = (() => {
-    const m = location.pathname.match(/^\/note\/topic\/[^/]+\/(.+)$/)
-           || location.pathname.match(/^\/note\/(?!topic\/)(.+)$/);
-    return m ? m[1] : null;
-  })();
+  /* query params 直接读 topic / doc，无需 regex 解析 pathname */
+  const [searchParams] = useSearchParams();
+  const activeTopicId = searchParams.get('topic');
+  const activeNoteId = searchParams.get('doc');
 
   const [activeTags, setActiveTags] = useState<Record<string, boolean>>({ '北京': true });
 
-  /* 笔记树导航状态 */
+  /* 笔记树导航状态
+   *
+   * currentParentId 直接从 URL 的 activeTopicId 推导，而非从 breadcrumb state。
+   * 这样直接加载 /note/topic/:id 时，节点列表立即用正确层级请求，
+   * 不会先闪一次根层级（admin 侧同款架构：URL 是唯一真相源）。
+   *
+   * breadcrumb state 仅用于面包屑 UI 展示（回退按钮和路径段），
+   * useEffect 负责将 URL → breadcrumb state 同步（异步，可接受短暂落后）。
+   */
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
-  const currentParentId = breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].id : undefined;
+  const currentParentId = activeTopicId ?? undefined;
   const { nodes: currentNodes, loading: notesLoading } = useStructureLevel(currentParentId);
 
-  /* URL → breadcrumb 同步
-   *   /note/:noteId       → 通过 contentItemId 反查路径
-   *   /note/topic/:topicId → 通过 nodeId 反查路径
+  /* URL → breadcrumb state 同步（仅用于 UI 展示，不参与节点请求）
+   *   /note/:noteId        → 通过 contentItemId 反查完整路径
+   *   /note/topic/:topicId → 通过 nodeId 反查完整路径
    *   /note                → 根级别，清空 breadcrumb */
   useEffect(() => {
     if (active !== 'notes') return;
@@ -178,6 +173,9 @@ export default function Sidebar() {
           .map((n) => ({ id: n.id, name: n.name }));
         setBreadcrumb(folders);
       }).catch(() => {});
+    } else {
+      /* 回到根目录 /note：清空面包屑 */
+      setBreadcrumb([]);
     }
 
     return () => { cancelled = true; };
@@ -185,23 +183,20 @@ export default function Sidebar() {
 
   const handleNavigate = (space: Space) => {
     navigate(spaceToPath(space));
-    setBreadcrumb([]);
   };
 
-  /* 进入文件夹：立即更新 breadcrumb + 同步 URL */
+  /* 进入文件夹：立即追加 breadcrumb（UI 即时反馈），URL 只写 topic */
   const enterFolder = (node: StructureNode) => {
     setBreadcrumb((prev) => [...prev, { id: node.id, name: node.name }]);
-    navigate(`/note/topic/${node.id}`);
+    navigate(`/note?topic=${node.id}`);
   };
 
-  /* 面包屑回退：回到指定层级的文件夹，或回到根 */
+  /* 面包屑回退：只改 URL，state 由 useEffect 同步 */
   const goToBreadcrumb = (index: number | null) => {
     if (index === null) {
-      setBreadcrumb([]);
       navigate('/note');
     } else {
-      setBreadcrumb(breadcrumb.slice(0, index + 1));
-      navigate(`/note/topic/${breadcrumb[index].id}`);
+      navigate(`/note?topic=${breadcrumb[index].id}`);
     }
   };
 
@@ -211,7 +206,6 @@ export default function Sidebar() {
       style={{
         width: 200,
         background: 'var(--sidebar-bg)',
-        padding: '12px 8px',
         margin: '12px 0 12px 12px',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-sm)',
@@ -220,7 +214,7 @@ export default function Sidebar() {
       {/* Header */}
       <div className="px-3 pb-5 pt-2">
         <span
-          className="text-[14px] font-bold"
+          className="text-base font-bold"
           style={{ color: 'var(--ink)', letterSpacing: '-0.02em' }}
         >
           Liminal Field
@@ -229,7 +223,7 @@ export default function Sidebar() {
 
       {/* Search trigger */}
       <button
-        className="sidebar-search mb-2.5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[14px] transition-all duration-150"
+        className="sidebar-search mx-2 mb-2.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-base transition-all duration-150"
         style={{
           background: 'var(--shelf)',
           color: 'var(--ink-ghost)',
@@ -238,7 +232,7 @@ export default function Sidebar() {
       >
         <Search size={13} strokeWidth={2} style={{ opacity: 0.4, color: 'var(--ink)' }} />
         <span>搜索</span>
-        <kbd className="ml-auto text-[12px]" style={{ opacity: 0.45, color: 'var(--ink-ghost)' }}>⌘K</kbd>
+        <kbd className="ml-auto text-sm" style={{ opacity: 0.45, color: 'var(--ink-ghost)' }}>⌘K</kbd>
       </button>
 
       {/* Main navigation */}
@@ -264,7 +258,7 @@ export default function Sidebar() {
               {icons[space]}
             </span>
             <span
-              className="relative z-[1] text-[14px] transition-colors duration-200"
+              className="relative z-[1] text-base transition-colors duration-200"
               style={{
                 color: space === active ? 'var(--ink)' : 'var(--ink-faded)',
                 fontWeight: space === active ? 500 : 400,
@@ -285,12 +279,12 @@ export default function Sidebar() {
            *  根层级：section 标题样式，无箭头
            *  有层级：← 箭头回退一级 + 路径段可点击
            *  超长时 hover … 弹出完整路径 */}
-          <div className="px-3 pb-2 pt-1.5">
+          <div className="mt-3 px-5 pb-2">
             {breadcrumb.length === 0 ? (
               /* 根层级 — 纯标题，不可点击 */
               <span
-                className="text-[12px] font-medium uppercase"
-                style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
+                className="text-2xs font-semibold uppercase"
+                style={{ color: 'var(--ink-ghost)', letterSpacing: '0.06em' }}
               >
                 文稿
               </span>
@@ -314,7 +308,7 @@ export default function Sidebar() {
                   {breadcrumb.length === 1 ? (
                     /* 只有 1 级：显示 "文稿" 点击回根 */
                     <span
-                      className="max-w-[120px] cursor-pointer truncate rounded px-1 py-0.5 text-[12px] transition-colors duration-150"
+                      className="max-w-[120px] cursor-pointer truncate rounded px-1 py-0.5 text-xs transition-colors duration-150"
                       style={{ color: 'var(--ink-light)' }}
                       onClick={() => goToBreadcrumb(null)}
                     >
@@ -327,41 +321,50 @@ export default function Sidebar() {
                       <HoverCard openDelay={200} closeDelay={100}>
                         <HoverCardTrigger asChild>
                           <span
-                            className="cursor-pointer rounded px-1 py-0.5 text-[12px] transition-colors duration-150"
+                            className="cursor-pointer rounded px-1 py-0.5 text-xs transition-colors duration-150"
                             style={{ color: 'var(--ink-ghost)' }}
                           >
                             …
                           </span>
                         </HoverCardTrigger>
-                        <HoverCardContent align="start" sideOffset={4} className="min-w-[140px]">
+                        <HoverCardContent
+                          align="start"
+                          sideOffset={4}
+                          className="w-auto min-w-[140px] max-w-[200px] border-none p-1.5"
+                          style={{
+                            background: 'var(--sidebar-bg)',
+                            borderRadius: 'var(--radius-lg)',
+                            boxShadow: 'var(--shadow-sm)',
+                          }}
+                        >
                           <div
-                            className="flex cursor-pointer items-center gap-2 truncate px-3 py-1.5 text-[12px] transition-colors duration-150"
+                            className="flex cursor-pointer items-center gap-2 truncate rounded-lg px-2.5 py-1.5 text-xs transition-colors duration-150 hover:bg-[var(--shelf)]"
                             style={{ color: 'var(--ink-light)' }}
                             onClick={() => goToBreadcrumb(null)}
                           >
-                            <Folder size={14} strokeWidth={1.5} style={{ color: 'var(--ink-ghost)' }} />
+                            <Folder size={13} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
                             文稿
                           </div>
                           {breadcrumb.slice(0, -1).map((item, i) => (
                             <div
                               key={item.id}
-                              className="flex cursor-pointer items-center gap-2 truncate py-1.5 text-[12px] transition-colors duration-150"
+                              className="flex cursor-pointer items-center gap-2 truncate rounded-lg py-1.5 text-xs transition-colors duration-150 hover:bg-[var(--shelf)]"
                               style={{
                                 color: 'var(--ink-light)',
-                                paddingLeft: `${(i + 1) * 10 + 12}px`,
-                                paddingRight: 12,
+                                paddingLeft: `${(i + 1) * 10 + 10}px`,
+                                paddingRight: 10,
                               }}
                               onClick={() => goToBreadcrumb(i)}
                             >
-                              <Folder size={14} strokeWidth={1.5} style={{ color: 'var(--ink-ghost)' }} />
+                              <Folder size={13} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
                               {item.name}
                             </div>
                           ))}
                         </HoverCardContent>
                       </HoverCard>
-                      <span className="text-[10px]" style={{ color: 'var(--ink-ghost)' }}>/</span>
+                      <span className="text-2xs" style={{ color: 'var(--ink-ghost)' }}>/</span>
                       <span
-                        className="max-w-[100px] truncate text-[12px]"
+                        className="max-w-[100px] truncate text-xs"
                         style={{ color: 'var(--ink-light)' }}
                       >
                         {breadcrumb[breadcrumb.length - 1].name}
@@ -374,54 +377,56 @@ export default function Sidebar() {
           </div>
 
           {notesLoading ? (
-            <div className="px-3 py-4 text-[12px]" style={{ color: 'var(--ink-ghost)' }}>加载中...</div>
+            <div className="px-3 py-4 text-xs" style={{ color: 'var(--ink-ghost)' }}>加载中...</div>
           ) : currentNodes.length === 0 ? (
-            <div className="px-3 py-4 text-[12px]" style={{ color: 'var(--ink-ghost)' }}>空</div>
+            <div className="px-3 py-4 text-xs" style={{ color: 'var(--ink-ghost)' }}>空</div>
           ) : (
-            <motion.div
-              key={currentParentId || 'root'}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.12 }}
-            >
-              {currentNodes.map((node) =>
-                node.type === 'FOLDER' ? (
-                  <div
-                    key={node.id}
-                    className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
-                    onClick={() => enterFolder(node)}
-                  >
-                    <Folder size={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
-                    <span className="truncate text-[14px]" style={{ color: 'var(--ink-light)' }}>{node.name}</span>
-                    {node.hasChildren && (
-                      <ChevronRight size={12} strokeWidth={2} className="ml-auto shrink-0" style={{ color: 'var(--ink-ghost)' }} />
-                    )}
-                  </div>
-                ) : node.contentItemId ? (
-                  <div
-                    key={node.id}
-                    className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors duration-150"
-                    style={{ background: activeNoteId === node.contentItemId ? 'var(--shelf)' : undefined }}
-                    onClick={() => navigate(
-                      currentParentId
-                        ? `/note/topic/${currentParentId}/${node.contentItemId}`
-                        : `/note/${node.contentItemId}`,
-                    )}
-                  >
-                    <File size={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
-                    <span
-                      className="truncate text-[14px]"
-                      style={{
-                        color: activeNoteId === node.contentItemId ? 'var(--ink)' : 'var(--ink-light)',
-                        fontWeight: activeNoteId === node.contentItemId ? 500 : 400,
-                      }}
+            <div className="px-2.5">
+              <motion.div
+                key={currentParentId || 'root'}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.12 }}
+              >
+                {currentNodes.map((node) =>
+                  node.type === 'FOLDER' ? (
+                    <div
+                      key={node.id}
+                      className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-all duration-150"
+                      onClick={() => enterFolder(node)}
                     >
-                      {node.name}
-                    </span>
-                  </div>
-                ) : null,
-              )}
-            </motion.div>
+                      <Folder size={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
+                      <span className="truncate text-base" style={{ color: 'var(--ink-light)' }}>{node.name}</span>
+                      {node.hasChildren && (
+                        <ChevronRight size={12} strokeWidth={2} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
+                      )}
+                    </div>
+                  ) : node.contentItemId ? (
+                    <div
+                      key={node.id}
+                      className="hover-shelf flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-all duration-150"
+                      style={{ background: activeNoteId === node.contentItemId ? 'var(--shelf)' : undefined }}
+                      onClick={() => navigate(
+                        currentParentId
+                          ? `/note?topic=${currentParentId}&doc=${node.contentItemId}`
+                          : `/note?doc=${node.contentItemId}`,
+                      )}
+                    >
+                      <FileText size={14} strokeWidth={1.5} className="shrink-0" style={{ color: activeNoteId === node.contentItemId ? 'var(--ink)' : 'var(--ink-ghost)' }} />
+                      <span
+                        className="truncate text-base"
+                        style={{
+                          color: activeNoteId === node.contentItemId ? 'var(--ink)' : 'var(--ink-light)',
+                          fontWeight: activeNoteId === node.contentItemId ? 500 : 400,
+                        }}
+                      >
+                        {node.name}
+                      </span>
+                    </div>
+                  ) : null,
+                )}
+              </motion.div>
+            </div>
           )}
         </div>
       )}
@@ -431,21 +436,21 @@ export default function Sidebar() {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="mx-3 my-2.5 h-px" style={{ background: 'var(--separator)' }} />
           <div
-            className="px-3 pb-2 pt-1.5 text-[12px] font-medium uppercase"
+            className="px-3 pb-2 pt-1.5 text-2xs font-medium uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             标签筛选
           </div>
           {tagGroups.map((g, i) => (
             <div key={i} className="mb-2.5 px-3">
-              <div className="mb-1.5 text-[12px] font-medium" style={{ color: 'var(--ink-ghost)' }}>
+              <div className="mb-1.5 text-xs font-medium" style={{ color: 'var(--ink-ghost)' }}>
                 {g.label}
               </div>
               <div className="flex flex-wrap gap-1">
                 {g.tags.map((t) => (
                   <span
                     key={t}
-                    className="cursor-pointer rounded-full px-2.5 py-[3px] text-[12px] transition-all duration-200"
+                    className="cursor-pointer rounded-full px-2.5 py-[3px] text-xs transition-all duration-200"
                     style={
                       activeTags[t]
                         ? { background: 'var(--ink)', color: 'var(--accent-contrast)', fontWeight: 500 }
@@ -467,7 +472,7 @@ export default function Sidebar() {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="mx-3 my-2.5 h-px" style={{ background: 'var(--separator)' }} />
           <div
-            className="px-3 pb-2 pt-1.5 text-[12px] font-medium uppercase"
+            className="px-3 pb-2 pt-1.5 text-2xs font-medium uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             对话
@@ -480,7 +485,7 @@ export default function Sidebar() {
             >
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div
-                  className="truncate text-[14px]"
+                  className="truncate text-base"
                   style={{
                     color: i === 0 ? 'var(--ink)' : 'var(--ink-light)',
                     fontWeight: i === 0 ? 500 : 400,
@@ -488,7 +493,7 @@ export default function Sidebar() {
                 >
                   {s.title}
                 </div>
-                <div className="text-[12px]" style={{ color: 'var(--ink-ghost)' }}>{s.date}</div>
+                <div className="text-xs" style={{ color: 'var(--ink-ghost)' }}>{s.date}</div>
               </div>
               {s.status === 'active' && (
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: 'var(--ink)', opacity: 0.4 }} />
@@ -496,7 +501,7 @@ export default function Sidebar() {
             </div>
           ))}
           <div
-            className="hover-shelf hover-ink-faded mt-1 cursor-pointer rounded-lg px-3 py-2 text-[12px] transition-all duration-150"
+            className="hover-shelf hover-ink-faded mt-1 cursor-pointer rounded-lg px-3 py-2 text-xs transition-all duration-150"
             style={{ color: 'var(--ink-ghost)' }}
           >
             + 新对话
@@ -507,7 +512,7 @@ export default function Sidebar() {
       {/* Bottom — ambient phrase */}
       <div className="mt-auto px-3 py-4">
         <span
-          className="text-[12px] leading-relaxed"
+          className="text-xs leading-relaxed"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.01em' }}
         >
           {getAmbientPhrase()}

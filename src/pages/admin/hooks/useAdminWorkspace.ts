@@ -1,20 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { isApiError } from '@/services/request';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type {
   CreateStructureNodeDto,
+  StructureNode,
   UpdateStructureNodeDto,
 } from '@/services/structure';
 import { structureApi } from '@/services/structure';
-import {
-  countNodes,
-  getSiblings,
-  insertChildInTree,
-  moveNodeInTree,
-  parseError,
-  removeNodeFromTree,
-  updateNodeInTree,
-} from '../helpers';
+import { parseError } from '../helpers';
 import {
   EMPTY_DRAFT_EDITOR_STATE,
   EMPTY_DRAFT_PRESENCE,
@@ -23,23 +17,227 @@ import {
   type ModalState,
   type NodeSubmitPayload,
   type PreviewState,
-  type TreeNode,
   type WorkspaceMode,
   toDraftEditorStateFromDetail,
   toDraftEditorStateFromDraft,
   toFormalContentState,
 } from '../types';
+import type { BreadcrumbItem } from '../components/AdminStructurePanel';
+
+/* ================================================================
+ * useAdminWorkspace — 管理端内容工作区核心 Hook
+ *
+ * 状态模型：URL 是唯一 source of truth
+ *   URL (folderId, contentItemId)
+ *     → breadcrumb   ← API 按 folderId 反查路径
+ *     → nodes        ← API 按 folderId 加载当前层级
+ *     → selectedNode ← useMemo 从 nodes + contentItemId 派生
+ *     → content      ← effect 按 selectedNode.contentItemId 加载
+ *
+ * 所有导航操作（enterFolder / goToBreadcrumb / selectNode）
+ * 只调 navigate()，不直接 setState。状态自动从 URL 派生。
+ * ================================================================ */
 
 export function useAdminWorkspace() {
-  const [tree, setTree] = useState<TreeNode[]>([]);
-  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlFolderId = searchParams.get('topic') ?? undefined;
+  const urlContentItemId = searchParams.get('doc') ?? undefined;
+
+  /* ================================================================
+   * 第一层派生：breadcrumb ← API 按 urlFolderId 反查
+   * ================================================================ */
+
+  const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
+
+  useEffect(() => {
+    if (!urlFolderId) {
+      setBreadcrumb([]);
+      return;
+    }
+
+    let cancelled = false;
+    structureApi.getPathByNodeId(urlFolderId).then((path) => {
+      if (cancelled) return;
+      setBreadcrumb(
+        path
+          .filter((n) => n.type === 'FOLDER')
+          .map((n) => ({ id: n.id, name: n.name })),
+      );
+    }).catch(() => {
+      if (!cancelled) {
+        setBreadcrumb([]);
+        navigate(buildUrl(), { replace: true });
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [urlFolderId, navigate]);
+
+  /* ================================================================
+   * 第二层派生：nodes ← API 按 urlFolderId 加载当前层级
+   * ================================================================ */
+
+  const [nodes, setNodes] = useState<StructureNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [modal, setModal] = useState<ModalState>({
-    open: false,
-    mode: 'create',
-  });
-  const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
+
+  const loadLevel = useCallback(async (parentId: string | undefined) => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = parentId
+        ? await structureApi.getChildren(parentId, { visibility: 'all' })
+        : await structureApi.getRootNodes({ visibility: 'all' });
+      setNodes(result.children);
+    } catch (loadError) {
+      setError(parseError(loadError, '加载内容列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /* urlFolderId 变化 → 重新加载当前层级 */
+  useEffect(() => {
+    void loadLevel(urlFolderId);
+  }, [loadLevel, urlFolderId]);
+
+  const reloadLevel = useCallback(() => {
+    void loadLevel(urlFolderId);
+  }, [loadLevel, urlFolderId]);
+
+  /* ================================================================
+   * 第三层派生：selectedNode ← useMemo 从 nodes + urlContentItemId 查找
+   * ================================================================ */
+
+  const selectedNode = useMemo<StructureNode | null>(() => {
+    if (!urlContentItemId || loading) return null;
+    return nodes.find((n) => n.contentItemId === urlContentItemId) ?? null;
+  }, [nodes, urlContentItemId, loading]);
+
+  /* ================================================================
+   * 导航操作：只改 URL，状态自动派生
+   * ================================================================ */
+
+  const buildUrl = useCallback((folderId?: string, contentItemId?: string) => {
+    const params = new URLSearchParams();
+    if (folderId) params.set('topic', folderId);
+    if (contentItemId) params.set('doc', contentItemId);
+    const qs = params.toString();
+    return qs ? `/admin/content?${qs}` : '/admin/content';
+  }, []);
+
+  const enterFolder = useCallback((node: StructureNode) => {
+    navigate(buildUrl(node.id));
+  }, [navigate, buildUrl]);
+
+  const goToBreadcrumb = useCallback((index: number | null) => {
+    if (index === null) {
+      navigate('/admin/content');
+    } else {
+      navigate(buildUrl(breadcrumb[index].id));
+    }
+  }, [navigate, buildUrl, breadcrumb]);
+
+  const selectNode = useCallback((node: StructureNode | null) => {
+    if (node?.contentItemId) {
+      navigate(buildUrl(urlFolderId, node.contentItemId), { replace: true });
+    } else {
+      navigate(buildUrl(urlFolderId), { replace: true });
+    }
+  }, [navigate, buildUrl, urlFolderId]);
+
+  /* ================================================================
+   * 节点 CRUD
+   * ================================================================ */
+
+  const [modal, setModal] = useState<ModalState>({ open: false, mode: 'create' });
+  const [deleteTarget, setDeleteTarget] = useState<StructureNode | null>(null);
+  const [moveTarget, setMoveTarget] = useState<StructureNode | null>(null);
+
+  const openCreate = (parentId?: string) =>
+    setModal({ open: true, mode: 'create', parentId });
+  const openEdit = (node: StructureNode) =>
+    setModal({ open: true, mode: 'edit', node });
+  const closeModal = () => setModal({ open: false, mode: 'create' });
+
+  const handleCreateOrEdit = async (payload: NodeSubmitPayload) => {
+    if (modal.mode === 'edit' && modal.node) {
+      await structureApi.updateNode(
+        modal.node.id,
+        payload.node as UpdateStructureNodeDto,
+      );
+      void loadLevel(urlFolderId);
+      return;
+    }
+
+    const createPayload = payload.node as CreateStructureNodeDto;
+
+    // DOC 节点的 content item 由后端 createStructureNode 原子创建，
+    // 前端无需关心 contentItemId——避免两步流程的竞态与遗留业务耦合。
+    await structureApi.createNode(createPayload);
+    void loadLevel(urlFolderId);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await structureApi.deleteNode(deleteTarget.id);
+
+    /* 如果删的是当前选中的，清除 URL 中的 contentItemId */
+    if (selectedNode?.id === deleteTarget.id) {
+      navigate(buildUrl(urlFolderId), { replace: true });
+    }
+    setDeleteTarget(null);
+    void loadLevel(urlFolderId);
+  };
+
+  /* ================================================================
+   * 同级拖拽排序
+   * ================================================================ */
+
+  const reorderNodes = useCallback(
+    (nodeId: string, targetNodeId: string, position: 'before' | 'after') => {
+      setNodes((current) => {
+        const sourceIndex = current.findIndex((n) => n.id === nodeId);
+        const targetIndex = current.findIndex((n) => n.id === targetNodeId);
+        if (sourceIndex === -1 || targetIndex === -1) return current;
+
+        const copy = [...current];
+        const [moved] = copy.splice(sourceIndex, 1);
+        const insertIndex = position === 'before'
+          ? copy.findIndex((n) => n.id === targetNodeId)
+          : copy.findIndex((n) => n.id === targetNodeId) + 1;
+        copy.splice(insertIndex, 0, moved);
+        return copy;
+      });
+
+      setNodes((current) => {
+        const siblingIds = current.map((n) => n.id);
+        void structureApi.reorderSiblings(urlFolderId ?? null, siblingIds).catch(() => {
+          void loadLevel(urlFolderId);
+        });
+        return current;
+      });
+    },
+    [urlFolderId, loadLevel],
+  );
+
+  /* ================================================================
+   * 跨层级移动
+   * ================================================================ */
+
+  const moveNodeToFolder = useCallback(
+    async (nodeId: string, targetFolderId: string | null) => {
+      await structureApi.updateNode(nodeId, { parentId: targetFolderId });
+      void loadLevel(urlFolderId);
+    },
+    [urlFolderId, loadLevel],
+  );
+
+  /* ================================================================
+   * 内容工作区状态
+   * ================================================================ */
+
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('formal');
   const [formalContent, setFormalContent] = useState(EMPTY_FORMAL_CONTENT);
   const [draftState, setDraftState] = useState(EMPTY_DRAFT_EDITOR_STATE);
@@ -63,43 +261,16 @@ export function useAdminWorkspace() {
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const totalNodes = useMemo(() => countNodes(tree), [tree]);
-  const isDocSelected = selectedNode?.type === 'DOC' && !!selectedNode.contentItemId;
-
-  const loadRoots = useCallback(async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { children: roots } = await structureApi.getRootNodes({ visibility: 'all' });
-      setTree(
-        roots.map((node) => ({
-          ...node,
-          children: undefined,
-          isExpanded: false,
-        })),
-      );
-    } catch (loadError) {
-      setError(parseError(loadError, '加载导航树失败'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadRoots();
-  }, [loadRoots]);
+  /* 用 contentItemId 驱动内容加载（不依赖 selectedNode 引用） */
+  const activeContentItemId = selectedNode?.contentItemId ?? null;
+  const prevContentItemIdRef = useRef<string | null>(null);
 
   const probeDraftPresence = useCallback(async (contentItemId: string) => {
     try {
       const draft = await contentItemsApi.getDraft(contentItemId);
-      setDraftPresence({
-        exists: true,
-        savedAt: draft.savedAt,
-      });
+      setDraftPresence({ exists: true, savedAt: draft.savedAt });
       return draft;
     } catch (draftError) {
-      /* 404 = 该内容项尚无草稿，属于正常状态 */
       if (isApiError(draftError, 404)) {
         setDraftPresence(EMPTY_DRAFT_PRESENCE);
         return null;
@@ -135,9 +306,7 @@ export function useAdminWorkspace() {
         setLastDraftSavedAt(existingDraft?.savedAt ?? '');
         setAutosaveError('');
       } catch (workspaceError) {
-        setContentError(
-          parseError(workspaceError, '加载正式内容失败'),
-        );
+        setContentError(parseError(workspaceError, '加载正式内容失败'));
         setFormalContent(EMPTY_FORMAL_CONTENT);
         setDraftState(EMPTY_DRAFT_EDITOR_STATE);
         setAssets([]);
@@ -154,8 +323,12 @@ export function useAdminWorkspace() {
     [probeDraftPresence],
   );
 
+  /* contentItemId 变化 → 加载内容或重置 */
   useEffect(() => {
-    if (!isDocSelected || !selectedNode?.contentItemId) {
+    if (activeContentItemId === prevContentItemIdRef.current) return;
+    prevContentItemIdRef.current = activeContentItemId;
+
+    if (!activeContentItemId) {
       setWorkspaceMode('formal');
       setFormalContent(EMPTY_FORMAL_CONTENT);
       setDraftState(EMPTY_DRAFT_EDITOR_STATE);
@@ -174,114 +347,12 @@ export function useAdminWorkspace() {
       return;
     }
 
-    void loadFormalContent(selectedNode.contentItemId);
-  }, [isDocSelected, loadFormalContent, selectedNode]);
+    void loadFormalContent(activeContentItemId);
+  }, [activeContentItemId, loadFormalContent]);
 
-  const handleExpand = useCallback(async (node: TreeNode) => {
-    if (node.isExpanded) {
-      setTree((current) =>
-        updateNodeInTree(current, node.id, (target) => ({
-          ...target,
-          isExpanded: false,
-        })),
-      );
-      return;
-    }
-
-    setTree((current) =>
-      updateNodeInTree(current, node.id, (target) => ({
-        ...target,
-        isLoading: true,
-      })),
-    );
-
-    try {
-      const { children } = await structureApi.getChildren(node.id, {
-        visibility: 'all',
-      });
-      setTree((current) =>
-        updateNodeInTree(current, node.id, (target) => ({
-          ...target,
-          isLoading: false,
-          isExpanded: true,
-          children: children.map((child) => ({ ...child, isExpanded: false })),
-        })),
-      );
-    } catch {
-      setTree((current) =>
-        updateNodeInTree(current, node.id, (target) => ({
-          ...target,
-          isLoading: false,
-        })),
-      );
-    }
-  }, []);
-
-  const openCreate = (parentId?: string) =>
-    setModal({ open: true, mode: 'create', parentId });
-  const openEdit = (node: TreeNode) =>
-    setModal({ open: true, mode: 'edit', node });
-  const closeModal = () => setModal({ open: false, mode: 'create' });
-
-  const handleCreateOrEdit = async (payload: NodeSubmitPayload) => {
-    if (modal.mode === 'edit' && modal.node) {
-      const updated = await structureApi.updateNode(
-        modal.node.id,
-        payload.node as UpdateStructureNodeDto,
-      );
-      setTree((current) =>
-        updateNodeInTree(current, updated.id, (target) => ({
-          ...target,
-          ...updated,
-        })),
-      );
-      if (selectedNode?.id === updated.id) {
-        setSelectedNode((current) =>
-          current ? { ...current, ...updated } : current,
-        );
-      }
-      return;
-    }
-
-    const createPayload = payload.node as CreateStructureNodeDto;
-    let contentItemId = createPayload.contentItemId;
-
-    /* DOC 节点自动创建内容项，用节点名称作为标题 */
-    if (createPayload.type === 'DOC') {
-      const createdContent = await contentItemsApi.create({
-        title: createPayload.name,
-        summary: '',
-        status: 'committed',
-        bodyMarkdown: '',
-        changeNote: '初始创建',
-        changeType: 'major',
-      });
-      contentItemId = createdContent.id;
-    }
-
-    const created = await structureApi.createNode({
-      ...createPayload,
-      contentItemId,
-    });
-    const newNode: TreeNode = { ...created, isExpanded: false };
-
-    if (modal.parentId) {
-      setTree((current) => insertChildInTree(current, modal.parentId!, newNode));
-    } else {
-      setTree((current) => [...current, newNode]);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-
-    await structureApi.deleteNode(deleteTarget.id);
-    setTree((current) => removeNodeFromTree(current, deleteTarget.id));
-    if (selectedNode?.id === deleteTarget.id) {
-      setSelectedNode(null);
-    }
-    setDeleteTarget(null);
-  };
+  /* ================================================================
+   * 草稿操作
+   * ================================================================ */
 
   const handleDraftEditorChange = <K extends keyof DraftEditorState>(
     key: K,
@@ -294,33 +365,24 @@ export function useAdminWorkspace() {
 
   const createDraftFromFormalVersion = useCallback(
     async (overwrite: boolean) => {
-      if (!selectedNode?.contentItemId || !formalContent.id) return;
+      if (!activeContentItemId || !formalContent.id) return;
 
       if (overwrite && draftPresence.exists) {
-        const confirmed = window.confirm(
-          '是否覆盖已有草稿？',
-        );
+        const confirmed = window.confirm('是否覆盖已有草稿？');
         if (!confirmed) return;
       }
 
-      const draft = await contentItemsApi.saveDraft(selectedNode.contentItemId, {
+      const draft = await contentItemsApi.saveDraft(activeContentItemId, {
         title: formalContent.latestVersion.title,
         summary: formalContent.latestVersion.summary,
         bodyMarkdown: formalContent.bodyMarkdown,
-        changeNote: overwrite
-          ? '从正式版本覆盖草稿'
-          : '从正式版本创建草稿',
+        changeNote: overwrite ? '从正式版本覆盖草稿' : '从正式版本创建草稿',
       });
 
       setDraftState(toDraftEditorStateFromDraft(draft));
-      setDraftPresence({
-        exists: true,
-        savedAt: draft.savedAt,
-      });
+      setDraftPresence({ exists: true, savedAt: draft.savedAt });
       setLastDraftSavedAt(draft.savedAt);
-      setDraftInfo(
-        `草稿工作区已就绪 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`,
-      );
+      setDraftInfo(`草稿工作区已就绪 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`);
       setActionMessage('');
       setAutosaveError('');
       setIsDirty(false);
@@ -332,26 +394,21 @@ export function useAdminWorkspace() {
       formalContent.id,
       formalContent.latestVersion.summary,
       formalContent.latestVersion.title,
-      selectedNode?.contentItemId,
+      activeContentItemId,
     ],
   );
 
   const resumeDraft = useCallback(async () => {
-    if (!selectedNode?.contentItemId) return;
+    if (!activeContentItemId) return;
 
     setContentLoading(true);
     setContentError('');
     try {
-      const draft = await contentItemsApi.getDraft(selectedNode.contentItemId);
+      const draft = await contentItemsApi.getDraft(activeContentItemId);
       setDraftState(toDraftEditorStateFromDraft(draft));
-      setDraftPresence({
-        exists: true,
-        savedAt: draft.savedAt,
-      });
+      setDraftPresence({ exists: true, savedAt: draft.savedAt });
       setLastDraftSavedAt(draft.savedAt);
-      setDraftInfo(
-        `已恢复草稿 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`,
-      );
+      setDraftInfo(`已恢复草稿 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`);
       setActionMessage('');
       setAutosaveError('');
       setIsDirty(false);
@@ -361,28 +418,25 @@ export function useAdminWorkspace() {
     } finally {
       setContentLoading(false);
     }
-  }, [selectedNode?.contentItemId]);
+  }, [activeContentItemId]);
 
   const saveDraft = useCallback(
     async (options?: { silent?: boolean }) => {
-      if (!selectedNode?.contentItemId) return;
+      if (!activeContentItemId) return;
 
       if (options?.silent) {
         setIsAutosaving(true);
         setAutosaveError('');
       }
 
-      const draft = await contentItemsApi.saveDraft(selectedNode.contentItemId, {
+      const draft = await contentItemsApi.saveDraft(activeContentItemId, {
         title: draftState.title,
         summary: draftState.summary,
         bodyMarkdown: draftState.bodyMarkdown,
         changeNote: draftState.changeNote,
       });
 
-      setDraftPresence({
-        exists: true,
-        savedAt: draft.savedAt,
-      });
+      setDraftPresence({ exists: true, savedAt: draft.savedAt });
       setIsDirty(false);
       setLastDraftSavedAt(draft.savedAt);
 
@@ -392,9 +446,7 @@ export function useAdminWorkspace() {
         return;
       }
 
-      setDraftInfo(
-        `草稿已保存 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`,
-      );
+      setDraftInfo(`草稿已保存 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`);
       setActionMessage('');
       setIsAutosaving(false);
     },
@@ -403,14 +455,14 @@ export function useAdminWorkspace() {
       draftState.changeNote,
       draftState.summary,
       draftState.title,
-      selectedNode?.contentItemId,
+      activeContentItemId,
     ],
   );
 
   const commitDraft = useCallback(async () => {
-    if (!selectedNode?.contentItemId) return;
+    if (!activeContentItemId) return;
 
-    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+    const saved = await contentItemsApi.save(activeContentItemId, {
       title: draftState.title,
       summary: draftState.summary,
       status: 'committed',
@@ -420,7 +472,7 @@ export function useAdminWorkspace() {
       action: 'commit',
     });
 
-    await contentItemsApi.deleteDraft(selectedNode.contentItemId);
+    await contentItemsApi.deleteDraft(activeContentItemId);
 
     setFormalContent(toFormalContentState(saved));
     setDraftPresence(EMPTY_DRAFT_PRESENCE);
@@ -430,24 +482,22 @@ export function useAdminWorkspace() {
     setLastDraftSavedAt('');
     setAutosaveError('');
     setWorkspaceMode('formal');
-    setActionMessage(
-      `新版本已提交 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`,
-    );
-    setHistory(await contentItemsApi.getHistory(selectedNode.contentItemId));
-    setAssets(await contentItemsApi.listAssets(selectedNode.contentItemId));
+    setActionMessage(`新版本已提交 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
+    setHistory(await contentItemsApi.getHistory(activeContentItemId));
+    setAssets(await contentItemsApi.listAssets(activeContentItemId));
   }, [
     draftState.bodyMarkdown,
     draftState.changeNote,
     draftState.changeType,
     draftState.summary,
     draftState.title,
-    selectedNode?.contentItemId,
+    activeContentItemId,
   ]);
 
   const discardDraft = useCallback(async () => {
-    if (!selectedNode?.contentItemId) return;
+    if (!activeContentItemId) return;
 
-    await contentItemsApi.deleteDraft(selectedNode.contentItemId);
+    await contentItemsApi.deleteDraft(activeContentItemId);
     setDraftPresence(EMPTY_DRAFT_PRESENCE);
     setDraftState(toDraftEditorStateFromDetail({
       id: formalContent.id,
@@ -470,12 +520,16 @@ export function useAdminWorkspace() {
     setIsDirty(false);
     setWorkspaceMode('formal');
     setActionMessage('草稿已丢弃');
-  }, [formalContent, selectedNode?.contentItemId]);
+  }, [formalContent, activeContentItemId]);
+
+  /* ================================================================
+   * 发布操作
+   * ================================================================ */
 
   const publishContent = useCallback(async () => {
-    if (!selectedNode?.contentItemId) return;
+    if (!activeContentItemId) return;
 
-    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+    const saved = await contentItemsApi.save(activeContentItemId, {
       title: formalContent.latestVersion.title,
       summary: formalContent.latestVersion.summary,
       status: 'published',
@@ -486,20 +540,18 @@ export function useAdminWorkspace() {
     });
 
     setFormalContent(toFormalContentState(saved));
-    setActionMessage(
-      `内容已发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`,
-    );
+    setActionMessage(`内容已发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
   }, [
     formalContent.bodyMarkdown,
     formalContent.latestVersion.summary,
     formalContent.latestVersion.title,
-    selectedNode?.contentItemId,
+    activeContentItemId,
   ]);
 
   const unpublishContent = useCallback(async () => {
-    if (!selectedNode?.contentItemId) return;
+    if (!activeContentItemId) return;
 
-    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+    const saved = await contentItemsApi.save(activeContentItemId, {
       title: formalContent.latestVersion.title,
       summary: formalContent.latestVersion.summary,
       status: 'committed',
@@ -510,24 +562,22 @@ export function useAdminWorkspace() {
     });
 
     setFormalContent(toFormalContentState(saved));
-    setActionMessage(
-      `已取消发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`,
-    );
+    setActionMessage(`已取消发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
   }, [
     formalContent.bodyMarkdown,
     formalContent.latestVersion.summary,
     formalContent.latestVersion.title,
-    selectedNode?.contentItemId,
+    activeContentItemId,
   ]);
+
+  /* ================================================================
+   * 版本预览
+   * ================================================================ */
 
   const previewVersion = useCallback(
     async (commitHash: string) => {
-      if (!selectedNode?.contentItemId) return;
-
-      /* Already previewing this version */
+      if (!activeContentItemId) return;
       if (preview?.commitHash === commitHash) return;
-
-      /* If clicking the latest version, just exit preview */
       if (commitHash === formalContent.latestVersion.commitHash) {
         setPreview(null);
         return;
@@ -535,10 +585,7 @@ export function useAdminWorkspace() {
 
       setPreviewLoading(true);
       try {
-        const detail = await contentItemsApi.getByVersion(
-          selectedNode.contentItemId,
-          commitHash,
-        );
+        const detail = await contentItemsApi.getByVersion(activeContentItemId, commitHash);
         setPreview({
           commitHash,
           title: detail.title,
@@ -551,22 +598,18 @@ export function useAdminWorkspace() {
         setPreviewLoading(false);
       }
     },
-    [selectedNode?.contentItemId, preview?.commitHash, formalContent.latestVersion.commitHash],
+    [activeContentItemId, preview?.commitHash, formalContent.latestVersion.commitHash],
   );
 
-  const exitPreview = useCallback(() => {
-    setPreview(null);
-  }, []);
+  const exitPreview = useCallback(() => { setPreview(null); }, []);
 
   const publishPreview = useCallback(async () => {
-    if (!selectedNode?.contentItemId || !preview) return;
+    if (!activeContentItemId || !preview) return;
 
-    const confirmed = window.confirm(
-      `发布版本 ${preview.commitHash.slice(0, 8)} ？`,
-    );
+    const confirmed = window.confirm(`发布版本 ${preview.commitHash.slice(0, 8)} ？`);
     if (!confirmed) return;
 
-    const saved = await contentItemsApi.save(selectedNode.contentItemId, {
+    const saved = await contentItemsApi.save(activeContentItemId, {
       title: preview.title,
       summary: formalContent.latestVersion.summary,
       status: 'published',
@@ -578,64 +621,27 @@ export function useAdminWorkspace() {
 
     setFormalContent(toFormalContentState(saved));
     setPreview(null);
-    setActionMessage(
-      `版本 ${preview.commitHash.slice(0, 8)} 已发布。`,
-    );
-    setHistory(await contentItemsApi.getHistory(selectedNode.contentItemId));
-  }, [selectedNode?.contentItemId, preview, formalContent.latestVersion.summary]);
+    setActionMessage(`版本 ${preview.commitHash.slice(0, 8)} 已发布。`);
+    setHistory(await contentItemsApi.getHistory(activeContentItemId));
+  }, [activeContentItemId, preview, formalContent.latestVersion.summary]);
+
+  /* ================================================================
+   * 附件 & 自动保存
+   * ================================================================ */
 
   const uploadAsset = useCallback(
     async (file: File) => {
-      if (!selectedNode?.contentItemId) return;
-
+      if (!activeContentItemId) return;
       setAssetsLoading(true);
       try {
-        await contentItemsApi.uploadAsset(selectedNode.contentItemId, file);
-        const nextAssets = await contentItemsApi.listAssets(
-          selectedNode.contentItemId,
-        );
-        setAssets(nextAssets);
+        await contentItemsApi.uploadAsset(activeContentItemId, file);
+        setAssets(await contentItemsApi.listAssets(activeContentItemId));
         setActionMessage(`已上传附件：${file.name}`);
       } finally {
         setAssetsLoading(false);
       }
     },
-    [selectedNode?.contentItemId],
-  );
-
-  const handleMoveNode = useCallback(
-    (nodeId: string, targetNodeId: string, position: 'before' | 'after' | 'inside') => {
-      const [, oldParentId] = getSiblings(tree, nodeId);
-
-      /* 乐观更新 */
-      const updated = moveNodeInTree(tree, nodeId, targetNodeId, position);
-      setTree(updated);
-
-      const newParentId = position === 'inside'
-        ? targetNodeId
-        : getSiblings(updated, targetNodeId)[1];
-
-      const persist = async () => {
-        if (oldParentId !== newParentId) {
-          /* 跨父级移动：只更新 parentId，然后重新加载同步服务端顺序 */
-          await structureApi.updateNode(nodeId, {
-            parentId: newParentId ?? undefined,
-          });
-          void loadRoots();
-        } else {
-          /* 同父级排序：直接 reorder */
-          const [newSiblings] = getSiblings(updated, nodeId);
-          const siblingIds = newSiblings.map((s) => s.id);
-          await structureApi.reorderSiblings(newParentId, siblingIds);
-        }
-      };
-
-      void persist().catch((err) => {
-        console.error('[DnD] 节点移动失败，回滚:', err);
-        void loadRoots();
-      });
-    },
-    [tree, loadRoots],
+    [activeContentItemId],
   );
 
   const insertAssetPath = useCallback((path: string) => {
@@ -650,43 +656,52 @@ export function useAdminWorkspace() {
   }, []);
 
   useEffect(() => {
-    if (
-      workspaceMode !== 'draft' ||
-      !selectedNode?.contentItemId ||
-      !isDirty ||
-      contentLoading
-    ) {
-      return;
-    }
+    if (workspaceMode !== 'draft' || !activeContentItemId || !isDirty || contentLoading) return;
 
     const timer = window.setTimeout(() => {
-      // Autosave belongs to the draft workspace only. The formal content view
-      // should stay free of editing side effects so published and committed
-      // versions remain clearly distinct from the working copy.
       void saveDraft({ silent: true }).catch((autosaveFailure) => {
         setIsAutosaving(false);
         setAutosaveError(parseError(autosaveFailure, '自动保存失败'));
       });
     }, 1500);
 
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [
-    contentLoading,
-    isDirty,
-    saveDraft,
-    selectedNode?.contentItemId,
-    workspaceMode,
-  ]);
+    return () => { window.clearTimeout(timer); };
+  }, [contentLoading, isDirty, saveDraft, activeContentItemId, workspaceMode]);
+
+  /* ================================================================
+   * 返回值
+   * ================================================================ */
 
   return {
-    tree,
-    selectedNode,
+    /* 导航（URL 驱动） */
+    breadcrumb,
+    nodes,
     loading,
     error,
+    currentParentId: urlFolderId,
+    enterFolder,
+    goToBreadcrumb,
+    reloadLevel,
+
+    /* 节点选择 & CRUD */
+    selectedNode,
+    selectNode,
     modal,
     deleteTarget,
+    setDeleteTarget,
+    moveTarget,
+    setMoveTarget,
+    openCreate,
+    openEdit,
+    closeModal,
+    handleCreateOrEdit,
+    handleDelete,
+
+    /* 排序 & 移动 */
+    reorderNodes,
+    moveNodeToFolder,
+
+    /* 内容工作区 */
     workspaceMode,
     formalContent,
     draftState,
@@ -703,18 +718,8 @@ export function useAdminWorkspace() {
     history,
     historyLoading,
     actionMessage,
-    totalNodes,
-    loadRoots,
-    setSelectedNode,
-    handleExpand,
-    openCreate,
-    openEdit,
-    closeModal,
-    setDeleteTarget,
-    handleCreateOrEdit,
-    handleDelete,
-    handleDraftEditorChange,
     loadFormalContent,
+    handleDraftEditorChange,
     createDraftFromFormalVersion,
     resumeDraft,
     saveDraft,
@@ -727,7 +732,6 @@ export function useAdminWorkspace() {
     previewVersion,
     exitPreview,
     publishPreview,
-    handleMoveNode,
     uploadAsset,
     insertAssetPath,
     setWorkspaceMode,

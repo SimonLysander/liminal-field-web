@@ -56,17 +56,11 @@ function MainLayout() {
         <Topbar />
 
         <AnimatePresence mode="wait">
-          {/* 主题目录间切换共享 key，避免同一个空状态页反复做动画；
-              切换到具体文章时 key 变化，触发入场动画 */}
+          {/* 打开具体文档时 key 变化触发入场动画，浏览目录时稳定 key 不做动画 */}
           <motion.div
             key={(() => {
-              const p = location.pathname;
-              /* 正在阅读文稿 → 每篇文稿独立 key，触发页面过渡 */
-              const noteMatch = p.match(/^\/note\/topic\/[^/]+\/(.+)$/)
-                             || p.match(/^\/note\/(?!topic\/)(.+)$/);
-              if (noteMatch) return `/note/${noteMatch[1]}`;
-              /* 浏览目录 → 稳定 key，文件夹间切换不做动画 */
-              return '/note';
+              const doc = new URLSearchParams(location.search).get('doc');
+              return doc ? `/note/${doc}` : '/note';
             })()}
             className="relative z-[1] flex flex-1 overflow-hidden"
             variants={pageVariants}
@@ -78,9 +72,6 @@ function MainLayout() {
             <Routes location={location}>
               <Route path="/home" element={<HomePage />} />
               <Route path="/note" element={<NotePage />} />
-              <Route path="/note/topic/:topicId/:noteId" element={<NotePage />} />
-              <Route path="/note/topic/:topicId" element={<NotePage />} />
-              <Route path="/note/:noteId" element={<NotePage />} />
               <Route path="/gallery" element={<GalleryPage />} />
               <Route path="/agent" element={<AgentPage />} />
               <Route path="*" element={<NotFoundPage />} />
