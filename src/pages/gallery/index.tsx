@@ -165,14 +165,14 @@ export default function GalleryPage() {
                 {post.photos.length > 1 && (
                   <>
                     <div
-                      className="absolute left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[10px] opacity-40 transition-all duration-250 hover:opacity-100"
+                      className="absolute left-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-2xs opacity-40 transition-all duration-250 hover:opacity-100"
                       style={{ background: 'rgba(0,0,0,0.3)', color: '#fff' }}
                       onClick={() => navigatePhoto(-1)}
                     >
                       ‹
                     </div>
                     <div
-                      className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[10px] opacity-40 transition-all duration-250 hover:opacity-100"
+                      className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-2xs opacity-40 transition-all duration-250 hover:opacity-100"
                       style={{ background: 'rgba(0,0,0,0.3)', color: '#fff' }}
                       onClick={() => navigatePhoto(1)}
                     >
@@ -224,14 +224,14 @@ export default function GalleryPage() {
         {posts.length > 1 && (
           <>
             <div
-              className="absolute left-1/2 top-3 flex h-6 w-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-[8px] opacity-0 transition-all duration-250 hover:opacity-60"
+              className="absolute left-1/2 top-3 flex h-6 w-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-4xs opacity-0 transition-all duration-250 hover:opacity-60"
               style={{ color: 'var(--ink-ghost)' }}
               onClick={() => navigatePost(-1)}
             >
               &#x25B3;
             </div>
             <div
-              className="absolute bottom-3 left-1/2 flex h-6 w-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-[8px] opacity-0 transition-all duration-250 hover:opacity-60"
+              className="absolute bottom-3 left-1/2 flex h-6 w-6 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-4xs opacity-0 transition-all duration-250 hover:opacity-60"
               style={{ color: 'var(--ink-ghost)' }}
               onClick={() => navigatePost(1)}
             >

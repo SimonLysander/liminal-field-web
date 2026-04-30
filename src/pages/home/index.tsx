@@ -54,12 +54,12 @@ export default function HomePage() {
         transition={{ duration: 0.5, ease: appleEase }}
       >
         <h1
-          className="text-[28px] font-bold leading-tight"
+          className="text-6xl font-bold leading-tight"
           style={{ color: 'var(--ink)', letterSpacing: '-0.025em' }}
         >
           {getGreeting()}
         </h1>
-        <p className="mt-1.5 text-[15px]" style={{ color: 'var(--ink-ghost)' }}>
+        <p className="mt-1.5 text-lg" style={{ color: 'var(--ink-ghost)' }}>
           11 篇文稿 · 47 张图片 · 18 个标签
         </p>
       </motion.div>
@@ -67,7 +67,7 @@ export default function HomePage() {
       {/* Activity feed */}
       <div>
         <div
-          className="mb-3.5 text-[13px] font-semibold uppercase"
+          className="mb-3.5 text-base font-semibold uppercase"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
         >
           最近活动
@@ -84,19 +84,19 @@ export default function HomePage() {
               variants={fadeUp}
             >
               <span
-                className="shrink-0 pt-px text-[13px] tabular-nums"
+                className="shrink-0 pt-px text-base tabular-nums"
                 style={{ color: 'var(--ink-ghost)', minWidth: 48 }}
               >
                 {a.date}
               </span>
               <span
-                className="flex-1 text-[15px] leading-relaxed"
+                className="flex-1 text-lg leading-relaxed"
                 style={{ color: 'var(--ink-light)', letterSpacing: '-0.003em' }}
               >
                 {a.text}
               </span>
               <span
-                className="shrink-0 rounded px-2 py-0.5 text-[13px]"
+                className="shrink-0 rounded px-2 py-0.5 text-base"
                 style={{ color: 'var(--ink-ghost)', background: 'var(--paper-dark)' }}
               >
                 {a.type}
@@ -109,7 +109,7 @@ export default function HomePage() {
       {/* Feature cards */}
       <div>
         <div
-          className="mb-3.5 text-[13px] font-semibold uppercase"
+          className="mb-3.5 text-base font-semibold uppercase"
           style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
         >
           精选
@@ -127,25 +127,25 @@ export default function HomePage() {
               whileHover={{ y: -2, transition: { duration: 0.25, ease: appleEase } }}
             >
               <div
-                className="mb-3.5 text-[13px] font-semibold uppercase"
+                className="mb-3.5 text-base font-semibold uppercase"
                 style={{ color: 'var(--ink-ghost)', letterSpacing: '0.03em' }}
               >
                 {f.label}
               </div>
               <div
-                className="mb-2 text-[15px] font-semibold leading-snug"
+                className="mb-2 text-lg font-semibold leading-snug"
                 style={{ color: 'var(--ink)', letterSpacing: '-0.015em' }}
               >
                 {f.title}
               </div>
               <div
-                className="text-[14px] leading-relaxed"
+                className="text-md leading-relaxed"
                 style={{ color: 'var(--ink-faded)', letterSpacing: '-0.003em' }}
               >
                 {f.body}
               </div>
               <div
-                className="mt-auto pt-4 text-[13px]"
+                className="mt-auto pt-4 text-base"
                 style={{ color: 'var(--ink-ghost)' }}
               >
                 {f.count}

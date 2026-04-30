@@ -5,6 +5,36 @@
 3. 时刻以务实犀利的态度讨论方案、设计、需求，不能一味迎合我，一切为了高质量、高扩展的优秀项目；涉及一些关键的、影响项目质量的方案、设计、实现，你应该主动询问我以消除未知、不确定的因素，避免因为其导致项目推进和质量出现问题
 4. 你可以把反复踩的、关键的、影响项目推进的坑持续迭代在 Agents.md
 
+\# 设计系统
+
+核心原则：**展示端和管理端相同语义角色的组件，视觉规格完全一致。**
+
+## 一致性检查清单
+
+新建或修改 UI 组件时，检查对端（展示/管理）是否有等价组件，逐项对齐：
+
+1. **字号** — token 选择、font-weight、letter-spacing、line-height
+2. **间距** — padding、margin、gap
+3. **尺寸** — icon size、icon strokeWidth
+4. **色彩** — 文字色（ink 系列）、背景色（shelf/sidebar-bg）、边框色（separator/box-border）
+5. **形状** — border-radius、border width/style
+6. **交互状态** — hover 效果、selected 背景/字重、transition duration/easing
+7. **布局结构** — flex 对齐、item 内部结构（icon + text + chevron）
+
+## 字号系统
+
+字号语义映射定义在 `src/index.css` 的 Type scale 注释中。规则：
+- 全部通过 Tailwind class（`text-base`、`text-xs` 等）引用，不用 inline `fontSize`
+- 相同语义角色使用相同 token
+- 修改字号前必须查阅 `src/index.css` 注释确认语义角色
+
+## 样式写法
+
+- 字号：Tailwind class（`text-base`），不用 inline `fontSize: 'var(--text-base)'`
+- 颜色：inline style `color: 'var(--ink)'`（CSS 变量无对应 Tailwind class 时）
+- 间距/圆角/布局：Tailwind class 优先
+- 一个项目一套写法，不混用
+
 \# 关键踩坑记录
 
 ## 批量重构必须走 branch + review + 验收

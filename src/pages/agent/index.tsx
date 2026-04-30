@@ -103,7 +103,7 @@ export default function AgentPage() {
             </motion.div>
 
             <motion.h1
-              className="text-[20px] font-semibold"
+              className="text-3xl font-semibold"
               style={{ color: 'var(--ink)', letterSpacing: '-0.025em' }}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -112,7 +112,7 @@ export default function AgentPage() {
               Liminal Field 助手
             </motion.h1>
             <motion.p
-              className="text-[15px]"
+              className="text-lg"
               style={{ color: 'var(--ink-ghost)', letterSpacing: '-0.003em' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -131,7 +131,7 @@ export default function AgentPage() {
               {suggestions.map((s, i) => (
                 <button
                   key={i}
-                  className="hover-shelf hover-ink cursor-pointer rounded-full px-4 py-[7px] text-[14px] transition-all duration-200"
+                  className="hover-shelf hover-ink cursor-pointer rounded-full px-4 py-[7px] text-md transition-all duration-200"
                   style={{
                     color: 'var(--ink-faded)',
                     border: '1px solid var(--box-border)',
@@ -160,7 +160,7 @@ export default function AgentPage() {
                     return (
                       <p
                         key={j}
-                        className="inline-block max-w-[85%] rounded-[18px] px-4 py-2.5 text-[15px] leading-relaxed"
+                        className="inline-block max-w-[85%] rounded-[18px] px-4 py-2.5 text-lg leading-relaxed"
                         style={{
                           background: 'var(--shelf)',
                           color: 'var(--ink)',
@@ -176,7 +176,7 @@ export default function AgentPage() {
                     return (
                       <p
                         key={j}
-                        className="text-[15px] leading-[1.75]"
+                        className="text-lg leading-[1.75]"
                         style={{ color: 'var(--ink-light)', letterSpacing: '-0.003em' }}
                       >
                         {block.text}
@@ -187,7 +187,7 @@ export default function AgentPage() {
                     return (
                       <blockquote
                         key={j}
-                        className="my-3 border-l-2 py-0 pl-5 text-[15px] font-medium leading-relaxed"
+                        className="my-3 border-l-2 py-0 pl-5 text-lg font-medium leading-relaxed"
                         style={{ borderColor: 'var(--ink)', color: 'var(--ink)', letterSpacing: '-0.01em' }}
                       >
                         {block.text}
@@ -205,20 +205,20 @@ export default function AgentPage() {
                           >
                             <div className="mb-2 flex items-center gap-2.5">
                               <span
-                                className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
+                                className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-sm font-semibold"
                                 style={{ background: 'var(--ink)', color: 'var(--accent-contrast)' }}
                               >
                                 {card.num}
                               </span>
                               <span
-                                className="text-[15px] font-semibold"
+                                className="text-lg font-semibold"
                                 style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}
                               >
                                 {card.title}
                               </span>
                             </div>
                             <p
-                              className="mb-2.5 text-[14px] leading-relaxed"
+                              className="mb-2.5 text-md leading-relaxed"
                               style={{ color: 'var(--ink-faded)' }}
                             >
                               {card.desc}
@@ -227,7 +227,7 @@ export default function AgentPage() {
                               {card.notes.map((n, ni) => (
                                 <span
                                   key={ni}
-                                  className="rounded-full px-2.5 py-[3px] text-[12px]"
+                                  className="rounded-full px-2.5 py-[3px] text-sm"
                                   style={{
                                     color: 'var(--ink-faded)',
                                     background: 'var(--paper)',
@@ -255,7 +255,7 @@ export default function AgentPage() {
           <div className="relative flex items-center">
             <input
               type="text"
-              className="focus-border w-full rounded-3xl border px-5 py-3.5 pr-[52px] text-[15px] outline-none transition-all duration-250"
+              className="focus-border w-full rounded-3xl border px-5 py-3.5 pr-[52px] text-lg outline-none transition-all duration-250"
               style={{
                 borderColor: 'var(--box-border)',
                 background: 'var(--paper)',
@@ -292,7 +292,7 @@ export default function AgentPage() {
         {/* Insights */}
         <div className="flex flex-col">
           <div
-            className="mb-3 text-[12px] font-semibold uppercase"
+            className="mb-3 text-sm font-semibold uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             洞察
@@ -306,12 +306,12 @@ export default function AgentPage() {
               >
                 <div className="flex items-center justify-between">
                   <span
-                    className="text-[12px] font-semibold uppercase"
+                    className="text-sm font-semibold uppercase"
                     style={{ color: 'var(--ink-ghost)', letterSpacing: '0.03em' }}
                   >
                     {ins.label}
                   </span>
-                  <span className="text-[12px] font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
+                  <span className="text-sm font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
                     {ins.strength}%
                   </span>
                 </div>
@@ -325,11 +325,11 @@ export default function AgentPage() {
                     transition={{ delay: 0.3 + i * 0.1, duration: 0.6, ease: appleEase }}
                   />
                 </div>
-                <div className="text-[14px] font-medium" style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}>
+                <div className="text-md font-medium" style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}>
                   {ins.value}
                 </div>
                 {ins.sub && (
-                  <div className="text-[12px]" style={{ color: 'var(--ink-ghost)' }}>
+                  <div className="text-sm" style={{ color: 'var(--ink-ghost)' }}>
                     {ins.sub}
                   </div>
                 )}
@@ -341,7 +341,7 @@ export default function AgentPage() {
         {/* Related notes */}
         <div className="flex flex-col">
           <div
-            className="mb-3 text-[12px] font-semibold uppercase"
+            className="mb-3 text-sm font-semibold uppercase"
             style={{ color: 'var(--ink-ghost)', letterSpacing: '0.04em' }}
           >
             关联文稿
@@ -353,7 +353,7 @@ export default function AgentPage() {
                 className="hover-shelf flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors duration-150"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
-                  <span className="truncate text-[14px] transition-colors duration-150" style={{ color: 'var(--ink-light)' }}>
+                  <span className="truncate text-md transition-colors duration-150" style={{ color: 'var(--ink-light)' }}>
                     {note.title}
                   </span>
                   <div className="h-[2px] overflow-hidden rounded-sm" style={{ background: 'var(--separator)' }}>
@@ -366,7 +366,7 @@ export default function AgentPage() {
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-[12px] font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
+                <span className="shrink-0 text-sm font-medium tabular-nums" style={{ color: 'var(--ink-ghost)' }}>
                   {note.match}%
                 </span>
               </div>

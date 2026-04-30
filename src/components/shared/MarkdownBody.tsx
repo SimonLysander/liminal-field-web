@@ -75,7 +75,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
         ),
         pre: ({ children }) => (
           <pre
-            className="my-4 overflow-x-auto whitespace-pre-wrap rounded-xl p-4 bg-shelf font-mono text-[13px] leading-[1.7] text-ink-light"
+            className="my-4 overflow-x-auto whitespace-pre-wrap rounded-xl p-4 bg-shelf font-mono text-base leading-[1.7] text-ink-light"
           >
             {children}
           </pre>
@@ -85,7 +85,7 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
           if (className) return <code className={className} {...props}>{children}</code>;
           return (
             <code
-              className="rounded-md px-1.5 py-[2px] bg-shelf font-mono text-[14px] text-ink-light"
+              className="rounded-md px-1.5 py-[2px] bg-shelf font-mono text-md text-ink-light"
               {...props}
             >
               {children}
@@ -109,11 +109,11 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
         strong: ({ children }) => <strong className="text-ink font-semibold">{children}</strong>,
         table: ({ children }) => (
           <div className="my-4 overflow-x-auto">
-            <table className="w-full border-collapse text-[14px]">{children}</table>
+            <table className="w-full border-collapse text-md">{children}</table>
           </div>
         ),
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left font-semibold border-b border-separator text-ink-faded text-[14px]">
+          <th className="px-3 py-2 text-left font-semibold border-b border-separator text-ink-faded text-md">
             {children}
           </th>
         ),
