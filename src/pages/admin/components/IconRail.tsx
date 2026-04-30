@@ -1,7 +1,11 @@
 // src/pages/admin/components/IconRail.tsx
 
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FileText, Image } from 'lucide-react';
+import { FileText, Image, RefreshCw, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
+import { authApi } from '@/services/auth';
+import { resetAuth } from '@/App';
 
 /*
  * IconRail — 48px 窄图标导航栏
@@ -19,11 +23,40 @@ const NAV_ITEMS = [
 export function IconRail() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
 
   /* 匹配当前路径到导航项（前缀匹配） */
   const activePath = NAV_ITEMS.find((item) =>
     location.pathname.startsWith(item.path),
   )?.path ?? NAV_ITEMS[0].path;
+
+  /* 触发远程同步，成功/失败均通过 toast 反馈 */
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const result = await authApi.sync();
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error('同步失败');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  /* 登出：先请求服务端，再清本地状态，跳转登录页 */
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // 即使请求失败也执行本地清理
+    }
+    resetAuth();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div
@@ -70,6 +103,27 @@ export function IconRail() {
           </button>
         );
       })}
+
+      {/* 底部操作区：sync + logout，push to bottom via mt-auto */}
+      <div className="mt-auto flex flex-col items-center gap-1">
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--shelf)]"
+          style={{ color: 'var(--ink-ghost)' }}
+          title="同步到远程"
+        >
+          <RefreshCw size={15} strokeWidth={1.8} className={syncing ? 'animate-spin' : ''} />
+        </button>
+        <button
+          onClick={handleLogout}
+          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--shelf)]"
+          style={{ color: 'var(--ink-ghost)' }}
+          title="退出登录"
+        >
+          <LogOut size={15} strokeWidth={1.8} />
+        </button>
+      </div>
     </div>
   );
 }
