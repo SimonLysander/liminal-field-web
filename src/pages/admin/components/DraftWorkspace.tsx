@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PlateMarkdownEditor } from './PlateEditor';
 import type { DraftWorkspaceProps } from '../types';
+import { LoadingState, ContentFade } from '@/components/LoadingState';
 
 export const DraftWorkspace = ({
   formalStatus,
@@ -12,7 +13,6 @@ export const DraftWorkspace = ({
   isAutosaving,
   lastDraftSavedAt,
   autosaveError,
-  actionMessage,
   onReloadDraft,
   onBackToContent,
   onEditorChange,
@@ -60,23 +60,17 @@ export const DraftWorkspace = ({
     await onDiscardDraft();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>加载草稿中...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl p-4" style={{ background: 'rgba(255,59,48,0.06)' }}>
-        <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>{error}</p>
-      </div>
-    );
-  }
+  const stateKey = loading ? 'loading' : error ? 'error' : 'content';
 
   return (
+    <ContentFade stateKey={stateKey}>
+      {loading ? (
+        <LoadingState label="加载草稿中" />
+      ) : error ? (
+        <div className="rounded-xl p-4" style={{ background: 'rgba(255,59,48,0.06)' }}>
+          <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>{error}</p>
+        </div>
+      ) : (
     <div className="space-y-4">
       {/* Action bar */}
       <div className="flex items-center justify-between">
@@ -93,7 +87,7 @@ export const DraftWorkspace = ({
       </div>
 
       {/* Status bar */}
-      {(isDirty || isAutosaving || lastDraftSavedAt || autosaveError || draftInfo || actionMessage) && (
+      {(isDirty || isAutosaving || lastDraftSavedAt || autosaveError || draftInfo) && (
         <div className="flex flex-wrap items-center gap-3" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
           {isAutosaving && <StatusDot color="var(--mark-blue)" label="自动保存中..." />}
           {isDirty && !isAutosaving && <StatusDot color="var(--mark-red)" label="有未保存的更改" />}
@@ -104,7 +98,6 @@ export const DraftWorkspace = ({
           <span style={{ opacity: 0.5 }}>⌘S 提交 · ⌘⇧S 保存</span>
           {autosaveError && <span style={{ color: 'var(--mark-red)' }}>{autosaveError}</span>}
           {draftInfo && <span>{draftInfo}</span>}
-          {actionMessage && <span style={{ color: 'var(--mark-green)' }}>{actionMessage}</span>}
         </div>
       )}
 
@@ -126,6 +119,8 @@ export const DraftWorkspace = ({
         charCount={draftState.bodyMarkdown.length}
       />
     </div>
+      )}
+    </ContentFade>
   );
 };
 

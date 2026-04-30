@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Folder } from 'lucide-react';
 import { smoothBounce } from '@/lib/motion';
 import { structureApi } from '@/services/structure';
 import type { StructureNode } from '@/services/structure';
+import { LoadingState, ContentFade } from '@/components/LoadingState';
 
 type BreadcrumbItem = { id: string; name: string };
 
@@ -190,41 +191,36 @@ export function MoveToDialog({ node, onConfirm, onClose }: MoveToDialogProps) {
 
         {/* Folder list */}
         <div className="flex-1 overflow-y-auto px-4 pb-2" style={{ minHeight: 120 }}>
-          {loading ? (
-            <div className="py-6 text-center" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
-              加载中...
-            </div>
-          ) : filteredFolders.length === 0 ? (
-            <div className="py-6 text-center" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
-              无子文件夹
-            </div>
-          ) : (
-            <motion.div
-              key={currentParentId || 'root'}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.12 }}
-            >
-              {filteredFolders.map((folder) => (
-                <div
-                  key={folder.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-[10px] px-2.5 py-[7px] transition-colors duration-150"
-                  style={{ color: 'var(--ink-light)' }}
-                  onClick={() => enterFolder(folder)}
-                  onMouseOver={(e) => { e.currentTarget.style.background = 'var(--shelf)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <Folder size={14} strokeWidth={1.5} style={{ color: 'var(--ink-ghost)' }} />
-                  <span className="min-w-0 flex-1 truncate" style={{ fontSize: 'var(--text-sm)' }}>
-                    {folder.name}
-                  </span>
-                  {folder.hasChildren && (
-                    <ChevronRight size={12} strokeWidth={2} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
-                  )}
-                </div>
-              ))}
-            </motion.div>
-          )}
+          <ContentFade stateKey={loading ? 'loading' : `folders-${currentParentId || 'root'}`}>
+            {loading ? (
+              <LoadingState />
+            ) : filteredFolders.length === 0 ? (
+              <div className="py-6 text-center" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
+                无子文件夹
+              </div>
+            ) : (
+              <div>
+                {filteredFolders.map((folder) => (
+                  <div
+                    key={folder.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-[10px] px-2.5 py-[7px] transition-colors duration-150"
+                    style={{ color: 'var(--ink-light)' }}
+                    onClick={() => enterFolder(folder)}
+                    onMouseOver={(e) => { e.currentTarget.style.background = 'var(--shelf)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Folder size={14} strokeWidth={1.5} style={{ color: 'var(--ink-ghost)' }} />
+                    <span className="min-w-0 flex-1 truncate" style={{ fontSize: 'var(--text-sm)' }}>
+                      {folder.name}
+                    </span>
+                    {folder.hasChildren && (
+                      <ChevronRight size={12} strokeWidth={2} className="shrink-0" style={{ color: 'var(--ink-ghost)' }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ContentFade>
         </div>
 
         {/* Footer */}

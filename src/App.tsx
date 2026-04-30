@@ -20,6 +20,7 @@ import { lazy, Suspense, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { LoadingState } from '@/components/LoadingState';
 import { smoothBounce } from './lib/motion';
 import { authApi } from '@/services/auth';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -66,7 +67,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  if (status === 'checking') return null;
+  if (status === 'checking') return <LoadingState variant="full" />;
   if (status === 'redirect') return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -134,7 +135,7 @@ function App() {
         <Route
           path="/login"
           element={
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingState variant="full" />}>
               <LoginPage />
             </Suspense>
           }
@@ -143,21 +144,21 @@ function App() {
           path="/admin"
           element={
             <AuthGuard>
-              <Suspense fallback={null}>
+              <Suspense fallback={<LoadingState variant="full" />}>
                 <AdminShell />
               </Suspense>
             </AuthGuard>
           }
         >
           <Route index element={<Navigate to="/admin/content" replace />} />
-          <Route path="content" element={<Suspense fallback={null}><ContentAdmin /></Suspense>} />
-          <Route path="gallery" element={<Suspense fallback={null}><GalleryAdmin /></Suspense>} />
+          <Route path="content" element={<Suspense fallback={<LoadingState variant="full" />}><ContentAdmin /></Suspense>} />
+          <Route path="gallery" element={<Suspense fallback={<LoadingState variant="full" />}><GalleryAdmin /></Suspense>} />
         </Route>
         <Route
           path="/admin/edit/:id"
           element={
             <AuthGuard>
-              <Suspense fallback={null}>
+              <Suspense fallback={<LoadingState variant="full" />}>
                 <DraftEditPage />
               </Suspense>
             </AuthGuard>

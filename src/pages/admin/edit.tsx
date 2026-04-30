@@ -15,12 +15,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Sun, Moon } from 'lucide-react';
+import { toast } from 'sonner';
 import { smoothBounce } from '@/lib/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type { ContentChangeType, ContentDetail, EditorDraft } from '@/services/workspace';
 import { PlateMarkdownEditor } from './components/PlateEditor';
 import { parseError } from './helpers';
+import { LoadingState } from '@/components/LoadingState';
 
 type EditorState = {
   title: string;
@@ -51,7 +53,6 @@ const DraftEditPage = () => {
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState('');
   const [autosaveError, setAutosaveError] = useState('');
-  const [actionMessage, setActionMessage] = useState('');
   const [resetKey] = useState(0);
   const [showCommitDialog, setShowCommitDialog] = useState(false);
   /* Portal 目标：Plate 工具栏通过 Portal 渲染到此元素内 */
@@ -171,8 +172,7 @@ const DraftEditPage = () => {
         setIsAutosaving(false);
 
         if (!options?.silent) {
-          setActionMessage('草稿已保存');
-          setTimeout(() => setActionMessage(''), 2000);
+          toast.success('草稿已保存');
         }
       } catch (saveError) {
         setIsAutosaving(false);
@@ -205,7 +205,7 @@ const DraftEditPage = () => {
       setIsDirty(false);
       setLastSavedAt('');
       setShowCommitDialog(false);
-      setActionMessage('已提交正式版本');
+      toast.success('已提交正式版本');
 
       setTimeout(() => navigate(-1), 1200);
     } catch (commitError) {
@@ -244,11 +244,7 @@ const DraftEditPage = () => {
   }, [isDirty, loading, saveDraft]);
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center" style={{ background: 'var(--paper)' }}>
-        <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>加载中...</span>
-      </div>
-    );
+    return <LoadingState variant="full" />;
   }
 
   if (error && !contentDetail) {
@@ -299,7 +295,6 @@ const DraftEditPage = () => {
                 <span>{new Date(lastSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
               )}
               {autosaveError && <span style={{ color: 'var(--mark-red)' }}>{autosaveError}</span>}
-              {actionMessage && <span style={{ color: 'var(--mark-green)' }}>{actionMessage}</span>}
             </div>
             <button
               className="hover-shelf flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200"

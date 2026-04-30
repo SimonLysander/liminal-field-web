@@ -30,52 +30,56 @@ export default function LoginPage() {
     >
       <form
         onSubmit={handleSubmit}
-        className="flex w-80 flex-col gap-4"
+        className="flex w-72 flex-col items-center gap-5"
       >
-        <div className="flex justify-center">
-          <div
-            className="flex h-10 w-10 items-center justify-center text-sm font-semibold"
-            style={{
-              background: 'var(--ink)',
-              color: 'var(--paper)',
-              borderRadius: 'var(--radius-md)',
-            }}
-          >
-            L
-          </div>
+        {/* Logo */}
+        <div
+          className="flex h-9 w-9 items-center justify-center text-xs font-semibold"
+          style={{
+            background: 'var(--ink)',
+            color: 'var(--paper)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          L
         </div>
 
         <h1
-          className="text-center text-lg font-medium"
-          style={{ color: 'var(--ink)' }}
+          className="text-base font-medium"
+          style={{ color: 'var(--ink)', letterSpacing: '-0.01em' }}
         >
           Liminal Field
         </h1>
 
+        {/* Password input */}
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="管理密码"
           autoFocus
-          className="h-10 rounded-lg px-3 text-sm outline-none transition-shadow focus:ring-2"
+          className="h-9 w-full rounded-lg px-3 text-sm outline-none"
           style={{
             background: 'var(--shelf)',
             color: 'var(--ink)',
-            border: '0.5px solid var(--separator)',
+            border: '1px solid var(--separator)',
           }}
         />
 
         {error && (
-          <p className="text-xs" style={{ color: 'var(--mark-red)' }}>
+          <p
+            className="-mt-2 w-full text-xs"
+            style={{ color: 'var(--mark-red)' }}
+          >
             {error}
           </p>
         )}
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading || !password}
-          className="h-10 text-sm font-medium transition-opacity disabled:opacity-50"
+          className="h-9 w-full text-sm font-medium transition-opacity disabled:opacity-40"
           style={{
             background: 'var(--ink)',
             color: 'var(--paper)',

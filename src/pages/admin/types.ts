@@ -67,7 +67,6 @@ export type ContentVersionViewProps = {
   content: FormalContentState;
   loading: boolean;
   error: string;
-  actionMessage: string;
   preview: PreviewState | null;
   previewLoading: boolean;
   onReload: () => Promise<void>;
@@ -89,7 +88,6 @@ export type DraftWorkspaceProps = {
   isAutosaving: boolean;
   lastDraftSavedAt: string;
   autosaveError: string;
-  actionMessage: string;
   onReloadDraft: () => Promise<void>;
   onBackToContent: () => void;
   onEditorChange: <K extends keyof DraftEditorState>(

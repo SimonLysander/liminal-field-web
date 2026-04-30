@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FileText, Image, RefreshCw, LogOut } from 'lucide-react';
-import { toast } from 'sonner';
 import { authApi } from '@/services/auth';
 import { resetAuth } from '@/App';
+import { SyncDialog } from './SyncDialog';
 
 /*
  * IconRail — 48px 窄图标导航栏
@@ -23,29 +23,12 @@ const NAV_ITEMS = [
 export function IconRail() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [syncing, setSyncing] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   /* 匹配当前路径到导航项（前缀匹配） */
   const activePath = NAV_ITEMS.find((item) =>
     location.pathname.startsWith(item.path),
   )?.path ?? NAV_ITEMS[0].path;
-
-  /* 触发远程同步，成功/失败均通过 toast 反馈 */
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const result = await authApi.sync();
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-      }
-    } catch {
-      toast.error('同步失败');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   /* 登出：先请求服务端，再清本地状态，跳转登录页 */
   const handleLogout = async () => {
@@ -59,71 +42,74 @@ export function IconRail() {
   };
 
   return (
-    <div
-      className="flex shrink-0 flex-col items-center py-3 gap-1"
-      style={{
-        width: 48,
-        background: 'var(--sidebar-bg)',
-        borderRight: '0.5px solid var(--separator)',
-      }}
-    >
-      {/* Logo */}
+    <>
       <div
-        className="mb-4 flex items-center justify-center rounded-lg"
+        className="flex shrink-0 flex-col items-center py-3 gap-1"
         style={{
-          width: 28,
-          height: 28,
-          background: 'var(--ink)',
-          color: 'var(--accent-contrast)',
-          fontSize: 'var(--text-xs)',
-          fontWeight: 700,
+          width: 48,
+          background: 'var(--sidebar-bg)',
+          borderRight: '0.5px solid var(--separator)',
         }}
       >
-        L
-      </div>
+        {/* Logo */}
+        <div
+          className="mb-4 flex items-center justify-center rounded-lg"
+          style={{
+            width: 28,
+            height: 28,
+            background: 'var(--ink)',
+            color: 'var(--accent-contrast)',
+            fontSize: 'var(--text-xs)',
+            fontWeight: 700,
+          }}
+        >
+          L
+        </div>
 
-      {/* Nav icons */}
-      {NAV_ITEMS.map((item) => {
-        const isActive = activePath === item.path;
-        const Icon = item.icon;
-        return (
+        {/* Nav icons */}
+        {NAV_ITEMS.map((item) => {
+          const isActive = activePath === item.path;
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.path}
+              className="flex items-center justify-center rounded-lg transition-colors duration-150"
+              style={{
+                width: 36,
+                height: 36,
+                background: isActive ? 'var(--shelf)' : 'transparent',
+                color: isActive ? 'var(--ink)' : 'var(--ink-ghost)',
+              }}
+              title={item.label}
+              onClick={() => navigate(item.path)}
+            >
+              <Icon size={18} strokeWidth={1.5} />
+            </button>
+          );
+        })}
+
+        {/* 底部操作区：sync + logout，push to bottom via mt-auto */}
+        <div className="mt-auto flex flex-col items-center gap-1">
           <button
-            key={item.path}
-            className="flex items-center justify-center rounded-lg transition-colors duration-150"
-            style={{
-              width: 36,
-              height: 36,
-              background: isActive ? 'var(--shelf)' : 'transparent',
-              color: isActive ? 'var(--ink)' : 'var(--ink-ghost)',
-            }}
-            title={item.label}
-            onClick={() => navigate(item.path)}
+            onClick={() => setSyncOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--shelf)]"
+            style={{ color: 'var(--ink-ghost)' }}
+            title="同步到远程"
           >
-            <Icon size={18} strokeWidth={1.5} />
+            <RefreshCw size={15} strokeWidth={1.8} />
           </button>
-        );
-      })}
-
-      {/* 底部操作区：sync + logout，push to bottom via mt-auto */}
-      <div className="mt-auto flex flex-col items-center gap-1">
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--shelf)]"
-          style={{ color: 'var(--ink-ghost)' }}
-          title="同步到远程"
-        >
-          <RefreshCw size={15} strokeWidth={1.8} className={syncing ? 'animate-spin' : ''} />
-        </button>
-        <button
-          onClick={handleLogout}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--shelf)]"
-          style={{ color: 'var(--ink-ghost)' }}
-          title="退出登录"
-        >
-          <LogOut size={15} strokeWidth={1.8} />
-        </button>
+          <button
+            onClick={handleLogout}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--shelf)]"
+            style={{ color: 'var(--ink-ghost)' }}
+            title="退出登录"
+          >
+            <LogOut size={15} strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
-    </div>
+
+      {syncOpen && <SyncDialog onClose={() => setSyncOpen(false)} />}
+    </>
   );
 }

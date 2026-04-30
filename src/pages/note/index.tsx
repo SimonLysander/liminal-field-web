@@ -25,6 +25,7 @@ import { smoothBounce } from '@/lib/motion';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type { ContentDetail } from '@/services/workspace';
 import MarkdownBody from '@/components/shared/MarkdownBody';
+import { LoadingState } from '@/components/LoadingState';
 import { BookOpen, X, Sparkles } from 'lucide-react';
 
 /* ================================================================
@@ -178,11 +179,7 @@ function NoteReader({ id }: { id: string }) {
   const readMin = Math.max(1, Math.ceil(wordCount / 400));
 
   if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <span className="text-md" style={{ color: 'var(--ink-ghost)' }}>加载中...</span>
-      </div>
-    );
+    return <LoadingState variant="full" />;
   }
 
   if (error || !content) {

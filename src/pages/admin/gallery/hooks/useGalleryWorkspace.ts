@@ -1,6 +1,7 @@
 // src/pages/admin/gallery/hooks/useGalleryWorkspace.ts
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { galleryApi } from '@/services/workspace';
 import type { GalleryPost, GalleryPostDetail } from '@/services/workspace';
 
@@ -13,7 +14,6 @@ export function useGalleryWorkspace() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState(false);
-  const [actionMessage, setActionMessage] = useState('');
 
   /* 加载动态列表 */
   const loadPosts = useCallback(async () => {
@@ -136,8 +136,11 @@ export function useGalleryWorkspace() {
   }, [selectedPost, loadPosts]);
 
   function showMessage(msg: string) {
-    setActionMessage(msg);
-    setTimeout(() => setActionMessage(''), 2000);
+    if (msg.includes('失败')) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
   }
 
   return {
@@ -147,7 +150,6 @@ export function useGalleryWorkspace() {
     error,
     statusFilter,
     editing,
-    actionMessage,
     setStatusFilter,
     setEditing,
     selectPost,
