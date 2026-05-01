@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { smoothBounce } from '@/lib/motion';
 import { galleryApi } from '@/services/workspace';
 import type { GalleryPostDetail } from '@/services/workspace';
+import { LoadingState } from '@/components/LoadingState';
 
 const slideVariantsY = {
   enter: (dir: number) => ({ y: dir > 0 ? 40 : -40, opacity: 0 }),
@@ -91,11 +92,7 @@ export default function GalleryPage() {
   }, [navigatePhoto, navigatePost]);
 
   if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-base)' }}>加载中...</span>
-      </div>
-    );
+    return <LoadingState variant="full" />;
   }
 
   if (posts.length === 0) {

@@ -31,6 +31,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
+import { LoadingState } from '@/components/LoadingState';
 
 /* ---------- Data ---------- */
 
@@ -377,7 +378,7 @@ export default function Sidebar() {
           </div>
 
           {notesLoading ? (
-            <div className="px-3 py-4 text-xs" style={{ color: 'var(--ink-ghost)' }}>加载中...</div>
+            <LoadingState />
           ) : currentNodes.length === 0 ? (
             <div className="px-3 py-4 text-xs" style={{ color: 'var(--ink-ghost)' }}>空</div>
           ) : (

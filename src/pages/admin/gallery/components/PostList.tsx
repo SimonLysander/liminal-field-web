@@ -2,6 +2,7 @@
 
 import { RefreshCw, Plus } from 'lucide-react';
 import type { GalleryPost } from '@/services/workspace';
+import { LoadingState, ContentFade } from '@/components/LoadingState';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 
@@ -69,67 +70,69 @@ export function PostList({
 
       {/* Post list */}
       <div className="flex-1 overflow-y-auto px-2.5 pb-4">
-        {loading && posts.length === 0 ? (
-          <div className="px-3 py-8 text-center" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
-            加载中...
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="px-3 py-8 text-center" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
-            暂无动态
-          </div>
-        ) : (
-          posts.map((post) => {
-            const isSelected = selectedPostId === post.id;
-            return (
-              <div
-                key={post.id}
-                className="flex cursor-pointer gap-2 rounded-[10px] px-2 py-2 transition-all duration-150"
-                style={{
-                  background: isSelected ? 'var(--shelf)' : 'transparent',
-                }}
-                onClick={() => onSelect(post.id)}
-              >
-                {/* Cover thumbnail */}
-                <div
-                  className="shrink-0 rounded-md"
-                  style={{
-                    width: 38,
-                    height: 38,
-                    background: post.coverUrl
-                      ? `url(${post.coverUrl}) center/cover`
-                      : 'var(--paper-dark)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}
-                />
-                <div className="min-w-0 flex-1">
+        <ContentFade stateKey={loading && posts.length === 0 ? 'loading' : 'list'}>
+          {loading && posts.length === 0 ? (
+            <LoadingState />
+          ) : posts.length === 0 ? (
+            <div className="px-3 py-8 text-center" style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>
+              暂无动态
+            </div>
+          ) : (
+            <div>
+              {posts.map((post) => {
+                const isSelected = selectedPostId === post.id;
+                return (
                   <div
-                    className="truncate"
+                    key={post.id}
+                    className="flex cursor-pointer gap-2 rounded-[10px] px-2 py-2 transition-all duration-150"
                     style={{
-                      fontSize: 'var(--text-xs)',
-                      color: isSelected ? 'var(--ink)' : 'var(--ink-light)',
-                      fontWeight: isSelected ? 500 : 400,
+                      background: isSelected ? 'var(--shelf)' : 'transparent',
                     }}
+                    onClick={() => onSelect(post.id)}
                   >
-                    {post.title}
+                    {/* Cover thumbnail */}
+                    <div
+                      className="shrink-0 rounded-md"
+                      style={{
+                        width: 38,
+                        height: 38,
+                        background: post.coverUrl
+                          ? `url(${post.coverUrl}) center/cover`
+                          : 'var(--paper-dark)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="truncate"
+                        style={{
+                          fontSize: 'var(--text-xs)',
+                          color: isSelected ? 'var(--ink)' : 'var(--ink-light)',
+                          fontWeight: isSelected ? 500 : 400,
+                        }}
+                      >
+                        {post.title}
+                      </div>
+                      <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--ink-ghost)', marginTop: 1 }}>
+                        {post.photoCount} 张 · {new Date(post.createdAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}
+                      </div>
+                      <span
+                        className="rounded px-1 font-medium"
+                        style={{
+                          fontSize: '0.5625rem',
+                          background: post.status === 'published' ? 'rgba(52,199,89,0.1)' : 'var(--shelf)',
+                          color: post.status === 'published' ? 'var(--mark-green)' : 'var(--ink-ghost)',
+                        }}
+                      >
+                        {post.status === 'published' ? '已发布' : '草稿'}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--ink-ghost)', marginTop: 1 }}>
-                    {post.photoCount} 张 · {new Date(post.createdAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}
-                  </div>
-                  <span
-                    className="rounded px-1 font-medium"
-                    style={{
-                      fontSize: '0.5625rem',
-                      background: post.status === 'published' ? 'rgba(52,199,89,0.1)' : 'var(--shelf)',
-                      color: post.status === 'published' ? 'var(--mark-green)' : 'var(--ink-ghost)',
-                    }}
-                  >
-                    {post.status === 'published' ? '已发布' : '草稿'}
-                  </span>
-                </div>
-              </div>
-            );
-          })
-        )}
+                );
+              })}
+            </div>
+          )}
+        </ContentFade>
       </div>
 
       {/* Bottom actions */}

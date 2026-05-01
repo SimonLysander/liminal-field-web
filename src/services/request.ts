@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 const BASE_URL = '/api/v1';
 
 export interface ApiResponse<T = unknown> {
@@ -33,12 +35,22 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
   });
 
   const text = await res.text();
-  if (!text) {
+  const json = text ? (JSON.parse(text) as ApiResponse<T>) : null;
+
+  // 401：在登录页保留后端原始错误（如"密码错误"），其他页面跳转登录页
+  if (res.status === 401) {
+    const serverMsg = json?.msg;
+    if (!window.location.pathname.startsWith('/login')) {
+      toast.info('登录已过期，请重新登录');
+      window.location.href = '/login';
+    }
+    throw new ApiError(401, serverMsg || '需要登录');
+  }
+
+  if (!text || !json) {
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
     return undefined as T;
   }
-
-  const json = JSON.parse(text) as ApiResponse<T>;
 
   if (json.code !== 0) {
     throw new ApiError(json.code, json.msg || `业务错误 (code: ${json.code})`);

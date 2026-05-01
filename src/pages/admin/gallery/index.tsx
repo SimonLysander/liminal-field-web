@@ -56,7 +56,6 @@ export default function GalleryAdmin() {
             <PostDetail
               post={ws.selectedPost}
               editing={ws.editing}
-              actionMessage={ws.actionMessage}
               onEdit={() => ws.setEditing(true)}
               onCancelEdit={() => ws.setEditing(false)}
               onSave={(t, d) => void ws.updatePost(t, d)}

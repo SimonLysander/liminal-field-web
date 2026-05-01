@@ -35,6 +35,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import type { StructureNode } from '@/services/structure';
+import { LoadingState, ContentFade } from '@/components/LoadingState';
 
 /* ---------- Types ---------- */
 
@@ -399,52 +400,47 @@ export function AdminStructurePanel({
 
       {/* Node list — 当前层级 */}
       <div className="flex-1 overflow-y-auto px-2.5 pb-4">
-        {loading ? (
-          <div className="px-3 py-8 text-center text-xs" style={{ color: 'var(--ink-ghost)' }}>
-            加载中...
-          </div>
-        ) : error ? (
-          <div className="rounded-xl p-3" style={{ background: 'rgba(255,59,48,0.06)' }}>
-            <p className="text-xs" style={{ color: 'var(--mark-red)' }}>{error}</p>
-            <button
-              className="mt-2 text-xs font-medium transition-colors duration-150"
-              style={{ color: 'var(--ink-faded)' }}
-              onClick={onReload}
-            >
-              重试
-            </button>
-          </div>
-        ) : nodes.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs" style={{ color: 'var(--ink-ghost)' }}>
-            暂无内容
-          </div>
-        ) : (
-          <motion.div
-            key={currentParentId || 'root'}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.12 }}
-          >
-            {nodes.map((node) => (
-              <NodeItem
-                key={node.id}
-                node={node}
-                isSelected={selectedNodeId === node.id}
-                isDragging={draggedNodeId === node.id}
-                dropTarget={dropTarget}
-                onSelect={onSelect}
-                onEnterFolder={onEnterFolder}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onMoveTo={onMoveTo}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-                onDrop={handleDrop}
-              />
-            ))}
-          </motion.div>
-        )}
+        <ContentFade stateKey={loading ? 'loading' : error ? 'error' : `list-${currentParentId || 'root'}`}>
+          {loading ? (
+            <LoadingState />
+          ) : error ? (
+            <div className="rounded-xl p-3" style={{ background: 'rgba(255,59,48,0.06)' }}>
+              <p className="text-xs" style={{ color: 'var(--mark-red)' }}>{error}</p>
+              <button
+                className="mt-2 text-xs font-medium transition-colors duration-150"
+                style={{ color: 'var(--ink-faded)' }}
+                onClick={onReload}
+              >
+                重试
+              </button>
+            </div>
+          ) : nodes.length === 0 ? (
+            <div className="px-3 py-8 text-center text-xs" style={{ color: 'var(--ink-ghost)' }}>
+              暂无内容
+            </div>
+          ) : (
+            <div>
+              {nodes.map((node) => (
+                <NodeItem
+                  key={node.id}
+                  node={node}
+                  isSelected={selectedNodeId === node.id}
+                  isDragging={draggedNodeId === node.id}
+                  dropTarget={dropTarget}
+                  onSelect={onSelect}
+                  onEnterFolder={onEnterFolder}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onMoveTo={onMoveTo}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  onDrop={handleDrop}
+                />
+              ))}
+            </div>
+          )}
+        </ContentFade>
       </div>
 
       {/* Bottom actions */}

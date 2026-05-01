@@ -16,10 +16,14 @@
  *     own TreePanel sidebar and are code-split via React.lazy.
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { LoadingState } from '@/components/LoadingState';
 import { smoothBounce } from './lib/motion';
+import { authApi } from '@/services/auth';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import Sidebar from './components/global/Sidebar';
 import Topbar from './components/global/Topbar';
@@ -33,6 +37,46 @@ const AdminShell = lazy(() => import('./pages/admin'));
 const ContentAdmin = lazy(() => import('./pages/admin/content'));
 const GalleryAdmin = lazy(() => import('./pages/admin/gallery'));
 const DraftEditPage = lazy(() => import('./pages/admin/edit'));
+const LoginPage = lazy(() => import('./pages/login'));
+
+/**
+ * 管理端路由守卫——加载前检查登录态。
+ * 首次检查结果缓存在模块作用域，避免每次路由切换都请求 /auth/check。
+ */
+let authChecked = false;
+let isAuthenticated = false;
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<'checking' | 'ok' | 'redirect'>(
+    authChecked ? (isAuthenticated ? 'ok' : 'redirect') : 'checking',
+  );
+
+  useEffect(() => {
+    if (authChecked) return;
+    authApi
+      .check()
+      .then((res) => {
+        authChecked = true;
+        isAuthenticated = res.authenticated;
+        setStatus(res.authenticated ? 'ok' : 'redirect');
+      })
+      .catch(() => {
+        authChecked = true;
+        isAuthenticated = false;
+        setStatus('redirect');
+      });
+  }, []);
+
+  if (status === 'checking') return <LoadingState variant="full" />;
+  if (status === 'redirect') return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+/** Logout 或 401 时重置鉴权缓存 */
+export function resetAuth() {
+  authChecked = false;
+  isAuthenticated = false;
+}
 
 const pageVariants = {
   enter: { opacity: 0, y: 6 },
@@ -85,23 +129,56 @@ function MainLayout() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="/admin" element={<Suspense fallback={null}><AdminShell /></Suspense>}>
-        <Route index element={<Navigate to="/admin/content" replace />} />
-        <Route path="content" element={<Suspense fallback={null}><ContentAdmin /></Suspense>} />
-        <Route path="gallery" element={<Suspense fallback={null}><GalleryAdmin /></Suspense>} />
-      </Route>
-      <Route
-        path="/admin/edit/:id"
-        element={
-          <Suspense fallback={null}>
-            <DraftEditPage />
-          </Suspense>
-        }
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route
+          path="/login"
+          element={
+            <Suspense fallback={<LoadingState variant="full" />}>
+              <LoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AuthGuard>
+              <Suspense fallback={<LoadingState variant="full" />}>
+                <AdminShell />
+              </Suspense>
+            </AuthGuard>
+          }
+        >
+          <Route index element={<Navigate to="/admin/content" replace />} />
+          <Route path="content" element={<Suspense fallback={<LoadingState variant="full" />}><ContentAdmin /></Suspense>} />
+          <Route path="gallery" element={<Suspense fallback={<LoadingState variant="full" />}><GalleryAdmin /></Suspense>} />
+        </Route>
+        <Route
+          path="/admin/edit/:id"
+          element={
+            <AuthGuard>
+              <Suspense fallback={<LoadingState variant="full" />}>
+                <DraftEditPage />
+              </Suspense>
+            </AuthGuard>
+          }
+        />
+        <Route path="/*" element={<MainLayout />} />
+      </Routes>
+      {/* 全局 toast 容器——样式对齐设计系统 token */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: 'var(--shelf)',
+            color: 'var(--ink)',
+            border: '0.5px solid var(--separator)',
+            borderRadius: 'var(--radius-md)',
+          },
+        }}
       />
-      <Route path="/*" element={<MainLayout />} />
-    </Routes>
+    </ErrorBoundary>
   );
 }
 

@@ -11,6 +11,7 @@
 import type { ContentStatus } from '@/services/workspace';
 import MarkdownBody from '@/components/shared/MarkdownBody';
 import type { ContentVersionViewProps } from '../types';
+import { LoadingState, ContentFade } from '@/components/LoadingState';
 
 const statusLabel: Record<string, string> = {
   published: '已发布',
@@ -43,7 +44,6 @@ export const ContentVersionView = ({
   content,
   loading,
   error,
-  actionMessage,
   preview,
   previewLoading,
   onReload,
@@ -68,23 +68,17 @@ export const ContentVersionView = ({
     await onUnpublish();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>加载内容中...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl p-4" style={{ background: 'rgba(255,59,48,0.06)' }}>
-        <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>{error}</p>
-      </div>
-    );
-  }
+  const stateKey = loading ? 'loading' : error ? 'error' : 'content';
 
   return (
+    <ContentFade stateKey={stateKey}>
+      {loading ? (
+        <LoadingState label="加载内容中" />
+      ) : error ? (
+        <div className="rounded-xl p-4" style={{ background: 'rgba(255,59,48,0.06)' }}>
+          <p style={{ color: 'var(--mark-red)', fontSize: 'var(--text-sm)' }}>{error}</p>
+        </div>
+      ) : (
     <div className="space-y-6">
       {/* Breadcrumb */}
       {node.parentId && (
@@ -165,15 +159,7 @@ export const ContentVersionView = ({
       )}
 
       {previewLoading && (
-        <div className="flex items-center justify-center py-8">
-          <span style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-sm)' }}>加载版本内容中...</span>
-        </div>
-      )}
-
-      {actionMessage && !preview && (
-        <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(52,199,89,0.06)' }}>
-          <p style={{ color: 'var(--mark-green)', fontSize: 'var(--text-xs)' }}>{actionMessage}</p>
-        </div>
+        <LoadingState label="加载版本内容中" />
       )}
 
       {/* Markdown body */}
@@ -204,10 +190,12 @@ export const ContentVersionView = ({
           className="p-5 leading-[1.9]"
           style={{ fontSize: 'var(--text-lg)' }}
         >
-          <MarkdownBody markdown={(preview ? preview.bodyMarkdown : content.bodyMarkdown) || ''} />
+          <MarkdownBody markdown={(preview ? preview.bodyMarkdown : content.bodyMarkdown) || ''} contentItemId={node.contentItemId} />
         </div>
       </div>
     </div>
+      )}
+    </ContentFade>
   );
 };
 

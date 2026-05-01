@@ -21,6 +21,7 @@ import { MoveToDialog } from '../components/MoveToDialog';
 import { useAdminWorkspace } from '../hooks/useAdminWorkspace';
 import type { DraftPresence } from '../types';
 import type { ContentHistoryEntry } from '@/services/workspace';
+import { LoadingState, ContentFade } from '@/components/LoadingState';
 
 const ContentAdmin = () => {
   const workspace = useAdminWorkspace();
@@ -142,7 +143,6 @@ const ContentAdmin = () => {
                       content={workspace.formalContent}
                       loading={workspace.contentLoading}
                       error={workspace.contentError}
-                      actionMessage={workspace.actionMessage}
                       preview={workspace.preview}
                       previewLoading={workspace.previewLoading}
                       onReload={() => workspace.loadFormalContent(workspace.selectedNode!.contentItemId!)}
@@ -326,18 +326,20 @@ function FormalSidePanel({
           版本
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {historyLoading ? (
-            <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>加载中...</p>
-          ) : history.length === 0 ? (
-            <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>暂无版本</p>
-          ) : (
-            <VersionTimeline
-              history={history}
-              publishedHash={publishedHash}
-              activePreviewHash={activePreviewHash}
-              onSelect={(hash) => void onSelectVersion(hash)}
-            />
-          )}
+          <ContentFade stateKey={historyLoading ? 'loading' : 'history'}>
+            {historyLoading ? (
+              <LoadingState />
+            ) : history.length === 0 ? (
+              <p style={{ color: 'var(--ink-ghost)', fontSize: 'var(--text-xs)' }}>暂无版本</p>
+            ) : (
+              <VersionTimeline
+                history={history}
+                publishedHash={publishedHash}
+                activePreviewHash={activePreviewHash}
+                onSelect={(hash) => void onSelectVersion(hash)}
+              />
+            )}
+          </ContentFade>
         </div>
       </div>
     </div>

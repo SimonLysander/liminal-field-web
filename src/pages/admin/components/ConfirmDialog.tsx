@@ -4,6 +4,7 @@ import { smoothBounce } from '@/lib/motion';
 import { structureApi, type DeleteStats } from '@/services/structure';
 import { parseError } from '../helpers';
 import type { StructureNode } from '@/services/structure';
+import { LoadingState } from '@/components/LoadingState';
 
 /**
  * Confirm dialog for destructive actions (delete node).
@@ -80,7 +81,7 @@ export const ConfirmDialog = ({
           </h3>
           <div className="mt-2 leading-relaxed" style={{ color: 'var(--ink-faded)', fontSize: 'var(--text-sm)' }}>
             {statsLoading ? (
-              <span>正在统计...</span>
+              <LoadingState variant="inline" label="正在统计" />
             ) : stats && hasDescendants ? (
               <span>
                 将删除 <strong style={{ color: 'var(--mark-red)' }}>{stats.folderCount}</strong> 个主题、

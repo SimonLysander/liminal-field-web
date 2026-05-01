@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { isApiError } from '@/services/request';
 import { notesApi as contentItemsApi } from '@/services/workspace';
 import type {
@@ -50,32 +51,8 @@ export function useAdminWorkspace() {
 
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
 
-  useEffect(() => {
-    if (!urlFolderId) {
-      setBreadcrumb([]);
-      return;
-    }
-
-    let cancelled = false;
-    structureApi.getPathByNodeId(urlFolderId).then((path) => {
-      if (cancelled) return;
-      setBreadcrumb(
-        path
-          .filter((n) => n.type === 'FOLDER')
-          .map((n) => ({ id: n.id, name: n.name })),
-      );
-    }).catch(() => {
-      if (!cancelled) {
-        setBreadcrumb([]);
-        navigate(buildUrl(), { replace: true });
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [urlFolderId, navigate]);
-
   /* ================================================================
-   * 第二层派生：nodes ← API 按 urlFolderId 加载当前层级
+   * 节点列表 + 面包屑：一次请求同时获取 path 和 children
    * ================================================================ */
 
   const [nodes, setNodes] = useState<StructureNode[]>([]);
@@ -90,8 +67,14 @@ export function useAdminWorkspace() {
         ? await structureApi.getChildren(parentId, { visibility: 'all' })
         : await structureApi.getRootNodes({ visibility: 'all' });
       setNodes(result.children);
+      setBreadcrumb(
+        result.path
+          .filter((n) => n.type === 'FOLDER')
+          .map((n) => ({ id: n.id, name: n.name })),
+      );
     } catch (loadError) {
       setError(parseError(loadError, '加载内容列表失败'));
+      setBreadcrumb([]);
     } finally {
       setLoading(false);
     }
@@ -249,15 +232,10 @@ export function useAdminWorkspace() {
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState('');
   const [autosaveError, setAutosaveError] = useState('');
-  const [assets, setAssets] = useState<
-    Awaited<ReturnType<typeof contentItemsApi.listAssets>>
-  >([]);
-  const [assetsLoading, setAssetsLoading] = useState(false);
   const [history, setHistory] = useState<
     Awaited<ReturnType<typeof contentItemsApi.getHistory>>
   >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [actionMessage, setActionMessage] = useState('');
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -285,22 +263,18 @@ export function useAdminWorkspace() {
       setContentLoading(true);
       setContentError('');
       setDraftInfo('');
-      setActionMessage('');
-      setAssetsLoading(true);
       setHistoryLoading(true);
 
       try {
-        const [detail, assetsResult, historyResult, existingDraft] =
+        const [detail, historyResult, existingDraft] =
           await Promise.all([
             contentItemsApi.getById(contentItemId, { visibility: 'all' }),
-            contentItemsApi.listAssets(contentItemId),
             contentItemsApi.getHistory(contentItemId),
             probeDraftPresence(contentItemId),
           ]);
 
         setFormalContent(toFormalContentState(detail));
         setDraftState(toDraftEditorStateFromDetail(detail));
-        setAssets(assetsResult);
         setHistory(historyResult);
         setIsDirty(false);
         setLastDraftSavedAt(existingDraft?.savedAt ?? '');
@@ -309,14 +283,12 @@ export function useAdminWorkspace() {
         setContentError(parseError(workspaceError, '加载正式内容失败'));
         setFormalContent(EMPTY_FORMAL_CONTENT);
         setDraftState(EMPTY_DRAFT_EDITOR_STATE);
-        setAssets([]);
         setHistory([]);
         setDraftPresence(EMPTY_DRAFT_PRESENCE);
         setIsDirty(false);
         setLastDraftSavedAt('');
       } finally {
         setContentLoading(false);
-        setAssetsLoading(false);
         setHistoryLoading(false);
       }
     },
@@ -335,8 +307,6 @@ export function useAdminWorkspace() {
       setDraftPresence(EMPTY_DRAFT_PRESENCE);
       setContentError('');
       setDraftInfo('');
-      setActionMessage('');
-      setAssets([]);
       setHistory([]);
       setIsDirty(false);
       setIsAutosaving(false);
@@ -383,7 +353,6 @@ export function useAdminWorkspace() {
       setDraftPresence({ exists: true, savedAt: draft.savedAt });
       setLastDraftSavedAt(draft.savedAt);
       setDraftInfo(`草稿工作区已就绪 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`);
-      setActionMessage('');
       setAutosaveError('');
       setIsDirty(false);
       setWorkspaceMode('draft');
@@ -409,7 +378,6 @@ export function useAdminWorkspace() {
       setDraftPresence({ exists: true, savedAt: draft.savedAt });
       setLastDraftSavedAt(draft.savedAt);
       setDraftInfo(`已恢复草稿 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`);
-      setActionMessage('');
       setAutosaveError('');
       setIsDirty(false);
       setWorkspaceMode('draft');
@@ -447,7 +415,6 @@ export function useAdminWorkspace() {
       }
 
       setDraftInfo(`草稿已保存 ${new Date(draft.savedAt).toLocaleString('zh-CN')}`);
-      setActionMessage('');
       setIsAutosaving(false);
     },
     [
@@ -482,9 +449,8 @@ export function useAdminWorkspace() {
     setLastDraftSavedAt('');
     setAutosaveError('');
     setWorkspaceMode('formal');
-    setActionMessage(`新版本已提交 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
+    toast.success(`新版本已提交 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
     setHistory(await contentItemsApi.getHistory(activeContentItemId));
-    setAssets(await contentItemsApi.listAssets(activeContentItemId));
   }, [
     draftState.bodyMarkdown,
     draftState.changeNote,
@@ -519,7 +485,7 @@ export function useAdminWorkspace() {
     setAutosaveError('');
     setIsDirty(false);
     setWorkspaceMode('formal');
-    setActionMessage('草稿已丢弃');
+    toast.success('草稿已丢弃');
   }, [formalContent, activeContentItemId]);
 
   /* ================================================================
@@ -540,7 +506,7 @@ export function useAdminWorkspace() {
     });
 
     setFormalContent(toFormalContentState(saved));
-    setActionMessage(`内容已发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
+    toast.success(`内容已发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
   }, [
     formalContent.bodyMarkdown,
     formalContent.latestVersion.summary,
@@ -562,7 +528,7 @@ export function useAdminWorkspace() {
     });
 
     setFormalContent(toFormalContentState(saved));
-    setActionMessage(`已取消发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
+    toast.success(`已取消发布 ${new Date(saved.updatedAt).toLocaleString('zh-CN')}`);
   }, [
     formalContent.bodyMarkdown,
     formalContent.latestVersion.summary,
@@ -621,39 +587,13 @@ export function useAdminWorkspace() {
 
     setFormalContent(toFormalContentState(saved));
     setPreview(null);
-    setActionMessage(`版本 ${preview.commitHash.slice(0, 8)} 已发布。`);
+    toast.success(`版本 ${preview.commitHash.slice(0, 8)} 已发布`);
     setHistory(await contentItemsApi.getHistory(activeContentItemId));
   }, [activeContentItemId, preview, formalContent.latestVersion.summary]);
 
   /* ================================================================
-   * 附件 & 自动保存
+   * 自动保存
    * ================================================================ */
-
-  const uploadAsset = useCallback(
-    async (file: File) => {
-      if (!activeContentItemId) return;
-      setAssetsLoading(true);
-      try {
-        await contentItemsApi.uploadAsset(activeContentItemId, file);
-        setAssets(await contentItemsApi.listAssets(activeContentItemId));
-        setActionMessage(`已上传附件：${file.name}`);
-      } finally {
-        setAssetsLoading(false);
-      }
-    },
-    [activeContentItemId],
-  );
-
-  const insertAssetPath = useCallback((path: string) => {
-    setDraftState((current) => ({
-      ...current,
-      bodyMarkdown: `${current.bodyMarkdown}${
-        current.bodyMarkdown.endsWith('\n') || !current.bodyMarkdown ? '' : '\n'
-      }![](${path})\n`,
-    }));
-    setIsDirty(true);
-    setAutosaveError('');
-  }, []);
 
   useEffect(() => {
     if (workspaceMode !== 'draft' || !activeContentItemId || !isDirty || contentLoading) return;
@@ -713,11 +653,8 @@ export function useAdminWorkspace() {
     isAutosaving,
     lastDraftSavedAt,
     autosaveError,
-    assets,
-    assetsLoading,
     history,
     historyLoading,
-    actionMessage,
     loadFormalContent,
     handleDraftEditorChange,
     createDraftFromFormalVersion,
@@ -732,8 +669,6 @@ export function useAdminWorkspace() {
     previewVersion,
     exitPreview,
     publishPreview,
-    uploadAsset,
-    insertAssetPath,
     setWorkspaceMode,
   };
 }
