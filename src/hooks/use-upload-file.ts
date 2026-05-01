@@ -1,128 +1,101 @@
+/**
+ * useUploadFile — 编辑器图片上传 hook。
+ *
+ * 通过 XHR 将文件上传到自有服务器 MinIO 草稿桶，
+ * 替代原来的 UploadThing 第三方 CDN。
+ * 通过 DraftAssetContext 获取 contentItemId 以构建上传 URL。
+ */
 import * as React from 'react';
 
-import type { OurFileRouter } from '@/lib/uploadthing';
-import type {
-  ClientUploadedFileData,
-  UploadFilesOptions,
-} from 'uploadthing/types';
-
-import { generateReactHelpers } from '@uploadthing/react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
-export type UploadedFile<T = unknown> = ClientUploadedFileData<T>;
+import { useDraftAssetContext } from '@/contexts/DraftAssetContext';
 
-interface UseUploadFileProps
-  extends Pick<
-    UploadFilesOptions<OurFileRouter['editorUploader']>,
-    'headers' | 'onUploadBegin' | 'onUploadProgress' | 'skipPolling'
-  > {
+/** 上传完成后的文件信息，PlaceholderElement 依赖 url 和 name 字段。 */
+export interface UploadedFile {
+  url: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
+interface UseUploadFileProps {
   onUploadComplete?: (file: UploadedFile) => void;
   onUploadError?: (error: unknown) => void;
 }
 
-export function useUploadFile({
-  onUploadComplete,
-  onUploadError,
-  ...props
-}: UseUploadFileProps = {}) {
+export function useUploadFile(props: UseUploadFileProps = {}) {
+  const { onUploadComplete, onUploadError } = props;
+  const { contentItemId } = useDraftAssetContext();
+
   const [uploadedFile, setUploadedFile] = React.useState<UploadedFile>();
   const [uploadingFile, setUploadingFile] = React.useState<File>();
   const [progress, setProgress] = React.useState<number>(0);
   const [isUploading, setIsUploading] = React.useState(false);
 
-  async function uploadThing(file: File) {
-    setIsUploading(true);
-    setUploadingFile(file);
-
-    try {
-      const res = await uploadFiles('editorUploader', {
-        ...props,
-        files: [file],
-        onUploadProgress: ({ progress }) => {
-          setProgress(Math.min(progress, 100));
-        },
-      });
-
-      setUploadedFile(res[0]);
-
-      onUploadComplete?.(res[0]);
-
-      return uploadedFile;
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-
-      const message =
-        errorMessage.length > 0
-          ? errorMessage
-          : 'Something went wrong, please try again later.';
-
-      toast.error(message);
-
-      onUploadError?.(error);
-
-      // Mock upload for unauthenticated users
-      // toast.info('User not logged in. Mocking upload process.');
-      const mockUploadedFile = {
-        key: 'mock-key-0',
-        appUrl: `https://mock-app-url.com/${file.name}`,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: URL.createObjectURL(file),
-      } as UploadedFile;
-
-      // Simulate upload progress
-      let progress = 0;
-
-      const simulateProgress = async () => {
-        while (progress < 100) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          progress += 2;
-          setProgress(Math.min(progress, 100));
-        }
-      };
-
-      await simulateProgress();
-
-      setUploadedFile(mockUploadedFile);
-
-      return mockUploadedFile;
-    } finally {
+  const uploadFile = React.useCallback(
+    async (file: File) => {
+      setIsUploading(true);
+      setUploadingFile(file);
       setProgress(0);
-      setIsUploading(false);
-      setUploadingFile(undefined);
-    }
-  }
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const result = await new Promise<UploadedFile>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open(
+            'POST',
+            `/api/v1/spaces/notes/items/${contentItemId}/draft-assets`,
+          );
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              setProgress(Math.round((e.loaded / e.total) * 100));
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              // 服务端统一包装为 { code, msg, data }，上传结果在 data.data
+              const resp = JSON.parse(xhr.responseText);
+              const payload = resp.data ?? resp;
+              resolve({
+                url: payload.path,
+                name: payload.fileName,
+                size: payload.size,
+                type: payload.contentType,
+              });
+            } else {
+              reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('Upload failed: network error'));
+          xhr.send(formData);
+        });
+
+        setUploadedFile(result);
+        onUploadComplete?.(result);
+        return result;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : '上传失败，请重试');
+        onUploadError?.(error);
+      } finally {
+        setProgress(0);
+        setIsUploading(false);
+        setUploadingFile(undefined);
+      }
+    },
+    [contentItemId, onUploadComplete, onUploadError],
+  );
 
   return {
     isUploading,
     progress,
     uploadedFile,
-    uploadFile: uploadThing,
+    uploadFile,
     uploadingFile,
   };
-}
-
-export const { uploadFiles, useUploadThing } =
-  generateReactHelpers<OurFileRouter>();
-
-export function getErrorMessage(err: unknown) {
-  const unknownError = 'Something went wrong, please try again later.';
-
-  if (err instanceof z.ZodError) {
-    const errors = err.issues.map((issue) => issue.message);
-
-    return errors.join('\n');
-  }
-  if (err instanceof Error) {
-    return err.message;
-  }
-  return unknownError;
-}
-
-export function showErrorToast(err: unknown) {
-  const errorMessage = getErrorMessage(err);
-
-  return toast.error(errorMessage);
 }

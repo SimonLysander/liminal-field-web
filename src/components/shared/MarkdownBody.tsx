@@ -19,7 +19,14 @@ import { memo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string }) {
+const MarkdownBody = memo(function MarkdownBody({
+  markdown,
+  contentItemId,
+}: {
+  markdown: string;
+  /** 传入后会将 ./assets/{name} 改写为服务端代理 URL */
+  contentItemId?: string;
+}) {
   let headingIdx = 0;
 
   return (
@@ -106,6 +113,22 @@ const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string
             {children}
           </a>
         ),
+        /* 将 git 存储的 ./assets/{name} 改写为服务端代理 URL */
+        img: ({ src, alt, ...props }) => {
+          const resolvedSrc =
+            contentItemId && src?.startsWith('./assets/')
+              ? `/api/v1/spaces/notes/items/${contentItemId}/assets/${src.slice(9)}`
+              : src;
+          return (
+            <img
+              {...props}
+              src={resolvedSrc}
+              alt={alt ?? ''}
+              className="my-4 max-w-full rounded-lg"
+              loading="lazy"
+            />
+          );
+        },
         strong: ({ children }) => <strong className="text-ink font-semibold">{children}</strong>,
         table: ({ children }) => (
           <div className="my-4 overflow-x-auto">

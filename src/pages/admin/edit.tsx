@@ -23,6 +23,7 @@ import type { ContentChangeType, ContentDetail, EditorDraft } from '@/services/w
 import { PlateMarkdownEditor } from './components/PlateEditor';
 import { parseError } from './helpers';
 import { LoadingState } from '@/components/LoadingState';
+import { DraftAssetProvider } from '@/contexts/DraftAssetContext';
 
 type EditorState = {
   title: string;
@@ -323,12 +324,14 @@ const DraftEditPage = () => {
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto overflow-x-hidden" data-scroll-container>
             <div className="mx-auto w-[85%] min-w-[600px] max-w-[960px] pb-40 pt-10">
-              <PlateMarkdownEditor
-                key={resetKey}
-                initialMarkdown={state.bodyMarkdown}
-                onChange={(md) => handleChange('bodyMarkdown', md)}
-                toolbarContainer={toolbarPortal}
-              />
+              <DraftAssetProvider contentItemId={id!}>
+                <PlateMarkdownEditor
+                  key={resetKey}
+                  initialMarkdown={state.bodyMarkdown}
+                  onChange={(md) => handleChange('bodyMarkdown', md)}
+                  toolbarContainer={toolbarPortal}
+                />
+              </DraftAssetProvider>
             </div>
           </div>
 

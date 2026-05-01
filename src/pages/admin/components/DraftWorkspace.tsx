@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { PlateMarkdownEditor } from './PlateEditor';
 import type { DraftWorkspaceProps } from '../types';
 import { LoadingState, ContentFade } from '@/components/LoadingState';
+import { DraftAssetProvider } from '@/contexts/DraftAssetContext';
 
 export const DraftWorkspace = ({
+  node,
   formalStatus,
   draftState,
   loading,
@@ -112,12 +114,14 @@ export const DraftWorkspace = ({
       />
 
       {/* Plate rich-text editor — immediately after title */}
-      <PlateMarkdownEditor
-        key={resetKey}
-        initialMarkdown={draftState.bodyMarkdown}
-        onChange={(md) => onEditorChange('bodyMarkdown', md)}
-        charCount={draftState.bodyMarkdown.length}
-      />
+      <DraftAssetProvider contentItemId={node.contentItemId!}>
+        <PlateMarkdownEditor
+          key={resetKey}
+          initialMarkdown={draftState.bodyMarkdown}
+          onChange={(md) => onEditorChange('bodyMarkdown', md)}
+          charCount={draftState.bodyMarkdown.length}
+        />
+      </DraftAssetProvider>
     </div>
       )}
     </ContentFade>

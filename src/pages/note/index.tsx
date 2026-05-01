@@ -238,7 +238,7 @@ function NoteReader({ id }: { id: string }) {
 
         {/* Markdown 正文 */}
         <div className="note-prose leading-[1.9]" style={{ color: 'var(--ink-light)', fontSize: 'var(--text-lg)' }}>
-          <MarkdownBody markdown={content.bodyMarkdown} />
+          <MarkdownBody markdown={content.bodyMarkdown} contentItemId={id} />
         </div>
        </div>
       </div>

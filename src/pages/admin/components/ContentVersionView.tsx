@@ -190,7 +190,7 @@ export const ContentVersionView = ({
           className="p-5 leading-[1.9]"
           style={{ fontSize: 'var(--text-lg)' }}
         >
-          <MarkdownBody markdown={(preview ? preview.bodyMarkdown : content.bodyMarkdown) || ''} />
+          <MarkdownBody markdown={(preview ? preview.bodyMarkdown : content.bodyMarkdown) || ''} contentItemId={node.contentItemId} />
         </div>
       </div>
     </div>
